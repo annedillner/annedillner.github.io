@@ -1,6 +1,6 @@
 <!--
 Photo Selector Web App
-Generated from spec v2.2 on 2025-11-16
+Generated from spec v2.3.1 on 2025-11-16
 Spec source: spec.md
 -->
 <!DOCTYPE html>
@@ -23,6 +23,7 @@ Spec source: spec.md
       --controlSizePx: 40px;
       --controlInsetPx: 12px;
       --overlayPaddingPx: 16px;
+      --focusTileBg: rgba(0,0,0,0.28);
     }
 
     html, body {
@@ -33,8 +34,12 @@ Spec source: spec.md
       font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      filter: grayscale(100%);
+      /* IMPORTANT: No grayscale filters anywhere; photos retain color */
+      user-select: none; /* prevent accidental selection globally */
     }
+
+    /* Allow selection where it makes sense */
+    .allow-select { user-select: text; }
 
     /* Top bar */
     .topbar {
@@ -66,13 +71,18 @@ Spec source: spec.md
       gap: var(--gapPx);
     }
     .cell { position: relative; aspect-ratio: 1/1; border: var(--cellBorderPx) solid var(--cellBorderColor); border-radius: 6px; overflow: hidden; background: #0002; }
-    .cell button.tile { all: unset; cursor: pointer; display: grid; place-items: center; width: 100%; height: 100%; }
-    .cell img { width: 100%; height: 100%; object-fit: contain; }
 
-    /* subtle checkmark */
-    .mark { position: absolute; inset: 0; pointer-events: none; }
-    .mark::after { content: ""; position: absolute; right: 6px; top: 6px; width: 18px; height: 18px; border-radius: 3px; border: 1px solid var(--uiGrayMid); background: #0004; box-shadow: inset 0 0 0 2px transparent; }
-    .cell[aria-selected="true"] .mark::after { box-shadow: inset 0 0 0 2px var(--uiGrayHigh); }
+    /* Each tile is a button */
+    .tile { all: unset; display: grid; place-items: center; width: 100%; height: 100%; cursor: pointer; }
+    .tile:focus-visible { outline: 2px solid var(--uiGrayHigh); outline-offset: 2px; background: var(--focusTileBg); }
+
+    img.photo { width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; user-drag: none; }
+
+    /* selection box (corner) */
+    .selbox { position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--uiGrayMid); background: #0006; display: grid; place-items: center; cursor: pointer; }
+    .selbox:focus-visible { outline: 2px solid var(--uiGrayHigh); outline-offset: 2px; }
+    .selbox::after { content: ""; width: 14px; height: 14px; box-shadow: inset 0 0 0 2px transparent; border-radius: 2px; border: 1px solid var(--uiGrayLow); }
+    .selbox[aria-pressed="true"]::after { box-shadow: inset 0 0 0 2px var(--uiGrayHigh); }
 
     /* Spinner */
     .spinner { width: 24px; height: 24px; border: 2px solid var(--uiGrayLow); border-top-color: var(--uiGrayHigh); border-radius: 50%; animation: spin 1s linear infinite; }
@@ -82,15 +92,18 @@ Spec source: spec.md
     .overlay { position: fixed; inset: 0; z-index: 100; display: none; background: color-mix(in srgb, var(--bgColor) 70%, #000 30%); }
     .overlay[open] { display: grid; grid-template-rows: auto 1fr; }
     .overlay .chrome { display: flex; gap: 8px; align-items: center; padding: 8px; border-bottom: 1px solid var(--cellBorderColor); }
-    .overlay .stage { position: relative; overflow: hidden; display: grid; place-items: center; padding: var(--overlayPaddingPx); }
-    .overlay .imgwrap { position: relative; max-width: min(100%, var(--overlayMaxWidth, 100%)); max-height: calc(100% - 2*var(--overlayPaddingPx)); }
-    .overlay .imgwrap img { width: 100%; height: 100%; object-fit: contain; }
+    .overlay .stage { position: relative; overflow: hidden; display: grid; place-items: center; padding: var(--overlayPaddingPx); touch-action: none; }
+    .overlay .track { position: relative; width: 100%; height: calc(100% - 2*var(--overlayPaddingPx)); display: grid; grid-template-columns: 100% 100%; }
+    .overlay .frame { position: absolute; inset: 0; display: grid; place-items: center; }
+    .overlay .imgwrap { max-width: min(100%, var(--overlayMaxWidth, 100%)); max-height: 100%; }
+    .overlay .imgwrap img { width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; user-drag: none; }
 
     /* Overlay controls */
     .navbtn { position: absolute; top: 50%; transform: translateY(-50%); width: var(--controlSizePx); height: var(--controlSizePx); border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--cellBorderColor); background: #0006; cursor: pointer; }
     .navbtn:focus-visible { outline: 2px solid var(--uiGrayHigh); }
     .prev { left: var(--controlInsetPx); }
     .next { right: var(--controlInsetPx); }
+
     .close { position: absolute; top: var(--controlInsetPx); right: var(--controlInsetPx); }
 
     /* Failure placeholder */
@@ -102,21 +115,26 @@ Spec source: spec.md
     /* Filename row inside overlay (under top bar) */
     .filename-row { margin-left: 8px; color: var(--uiGrayMid); }
 
-    /* Utility */
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    /* Simple slide animation classes */
+    .slide-enter { animation: slideIn var(--swipeMs, 220ms) ease both; }
+    .slide-exit-left { animation: slideOutLeft var(--swipeMs, 220ms) ease both; }
+    .slide-exit-right { animation: slideOutRight var(--swipeMs, 220ms) ease both; }
+    @keyframes slideIn { from { transform: translateX(var(--fromX, 100%)); opacity: 0.7; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOutLeft { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-20%); opacity: 0; } }
+    @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(20%); opacity: 0; } }
   </style>
 </head>
 <body>
   <div class="topbar" role="region" aria-label="Top bar">
     <div id="selCount" class="count" aria-live="polite">0 selected</div>
     <div class="spacer"></div>
-    <button class="btn" id="copyLink" aria-label="Copy link">Copy link</button>
-    <button class="btn" id="copyNames" aria-label="Copy filenames">Copy filenames</button>
-    <button class="btn" id="toggleOnly" aria-label="Show only selected" aria-pressed="false">Show only selected</button>
-    <button class="btn" id="clearSel" aria-label="Clear selection">Clear</button>
+    <button class="btn" id="shareOrCopy" aria-label="Share or copy link">Copy link</button>
+    <button class="btn" id="copyNames" aria-label="Copy filenames" disabled>Copy filenames</button>
+    <label class="btn" id="onlyWrap"><input type="checkbox" id="onlyChk" aria-label="Show only selected"> <span id="onlyLbl">Show only selected</span></label>
+    <button class="btn" id="clearSel" aria-label="Clear selection" disabled>Clear</button>
     <button class="btn" id="toggleLang" aria-label="Toggle language">EN/SV</button>
   </div>
-  <p id="banner" class="banner" hidden></p>
+  <p id="banner" class="banner allow-select" hidden></p>
 
   <main>
     <div id="grid" class="grid" role="grid" aria-label="Photos grid"></div>
@@ -125,22 +143,22 @@ Spec source: spec.md
   <!-- Overlay -->
   <section id="overlay" class="overlay" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
     <div class="chrome">
-      <button class="btn" id="ovClose" aria-label="Close" title="Esc">✕</button>
-      <div class="filename-row" id="filenameRow"></div>
+      <button class="btn" id="ovClose" class="close" aria-label="Close" title="Esc">✕</button>
+      <div class="filename-row allow-select" id="filenameRow"></div>
       <div class="spacer"></div>
       <button class="btn" id="ovCopyName" aria-label="Copy filename">Copy filename</button>
     </div>
-    <div class="stage">
+    <div class="stage" id="ovStage">
       <button class="navbtn prev" id="ovPrev" aria-label="Previous" title="←">◀</button>
       <button class="navbtn next" id="ovNext" aria-label="Next" title="→">▶</button>
-      <div class="imgwrap" id="ovWrap"></div>
+      <div class="frame" id="ovFrame"></div>
     </div>
   </section>
 
   <div id="live" class="sr-only" aria-live="polite"></div>
 
   <script>
-    // === Configuration & Tunables (can be tweaked here; UI reads from here) ===
+    // === Configuration & Tunables (v2.3) ===
     const CONFIG = {
       baseDir: "photos/",
       approxCellSizePx: 180,
@@ -171,6 +189,8 @@ Spec source: spec.md
 
       localeDefault: "en",
 
+      focusTileBg: "rgba(0,0,0,0.28)",
+
       // Image manifest URL; expected schema: { images: ["IMG_0001.jpg", ...] }
       manifest: "manifest.json"
     };
@@ -180,11 +200,11 @@ Spec source: spec.md
       en: {
         selected: n => `${n} photo${n===1?'':'s'} selected`,
         copyLink: "Copy link",
+        share: "Share",
         copied: "Link copied",
         copyNames: "Copy filenames",
         copiedNames: "Filenames copied",
         only: "Show only selected",
-        onlyOn: "Showing only selected",
         clear: "Clear",
         filenameCopy: "Copy filename",
         openUnknown: name => `Cannot open ‘${name}’ — not part of this gallery.`,
@@ -195,11 +215,11 @@ Spec source: spec.md
       sv: {
         selected: n => `${n} bild${n===1?'':'er'} valda`,
         copyLink: "Kopiera länk",
+        share: "Dela",
         copied: "Länk kopierad",
         copyNames: "Kopiera filnamn",
         copiedNames: "Filnamn kopierade",
         only: "Visa bara valda",
-        onlyOn: "Visar bara valda",
         clear: "Rensa",
         filenameCopy: "Kopiera filnamn",
         openUnknown: name => `Kan inte öppna ‘${name}’ — finns inte i detta galleri.`,
@@ -223,6 +243,8 @@ Spec source: spec.md
       r.setProperty('--controlSizePx', CONFIG.controlSizePx + 'px');
       r.setProperty('--controlInsetPx', CONFIG.controlInsetPx + 'px');
       r.setProperty('--overlayPaddingPx', CONFIG.overlayPaddingPx + 'px');
+      r.setProperty('--focusTileBg', CONFIG.focusTileBg);
+      document.documentElement.style.setProperty('--swipeMs', CONFIG.swipeAnimMs + 'ms');
     }
 
     // Utilities
@@ -235,14 +257,8 @@ Spec source: spec.md
 
     const debounce = (fn, ms=250) => { let t; return (...a)=>{ clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; };
     const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-    const hash = (str) => {
-      // simple 32-bit FNV-1a
-      let h = 0x811c9dc5; for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = (h>>>0) + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)); }
-      return (h>>>0).toString(36);
-    };
-    const copyText = async (text) => {
-      try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
-    };
+    const hash = (str) => { let h = 0x811c9dc5; for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = (h>>>0) + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)); } return (h>>>0).toString(36); };
+    const copyText = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
     // State
     const state = {
@@ -253,7 +269,6 @@ Spec source: spec.md
       open: null,
       lang: CONFIG.localeDefault,
       v: null,
-      focusIdx: 0,
     };
 
     // i18n helpers
@@ -263,9 +278,10 @@ Spec source: spec.md
       return typeof val === 'function' ? val(...args) : val;
     }
     function applyLangToUI(){
-      qs('#copyLink').textContent = L('copyLink');
+      const supportsShare = !!navigator.share;
+      qs('#shareOrCopy').textContent = supportsShare ? L('share') : L('copyLink');
       qs('#copyNames').textContent = L('copyNames');
-      qs('#toggleOnly').textContent = state.only ? L('onlyOn') : L('only');
+      qs('#onlyLbl').textContent = L('only');
       qs('#clearSel').textContent = L('clear');
       qs('#ovCopyName').textContent = L('filenameCopy');
       updateSelCount();
@@ -277,13 +293,7 @@ Spec source: spec.md
     // URL sync
     const parseURL = () => {
       const p = new URLSearchParams(location.search);
-      return {
-        sel: p.get('sel'),
-        only: p.get('only') === '1',
-        open: p.get('open'),
-        lang: p.get('lang'),
-        v: p.get('v')
-      };
+      return { sel: p.get('sel'), only: p.get('only') === '1', open: p.get('open'), lang: p.get('lang'), v: p.get('v') };
     };
     const pushURL = debounce(()=>{
       const p = new URLSearchParams(location.search);
@@ -293,10 +303,7 @@ Spec source: spec.md
       if (state.lang) p.set('lang', state.lang); else p.delete('lang');
       if (state.v) p.set('v', state.v); else p.delete('v');
       history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
-      // persist
-      localStorage.setItem(storageKey(), JSON.stringify({
-        sel: Array.from(state.selected), only: state.only, open: state.open, lang: state.lang, v: state.v
-      }));
+      localStorage.setItem(storageKey(), JSON.stringify({ sel: Array.from(state.selected), only: state.only, open: state.open, lang: state.lang, v: state.v }));
     }, 200);
 
     // Banners
@@ -310,9 +317,7 @@ Spec source: spec.md
         if (!res.ok) throw new Error('HTTP '+res.status);
         const json = await res.json();
         const arr = Array.isArray(json?.images) ? json.images : [];
-        // normalize to filenames only (defensive)
         state.images = arr.map(String).map(s=>s.split('/').pop());
-        // duplicates
         const seen = new Set(); const dupes=[];
         for (const f of state.images){ if (seen.has(f)) dupes.push(f); seen.add(f); }
         if (dupes.length){ showBanner(L('dupes', dupes)); throw new Error('dupes'); }
@@ -324,10 +329,9 @@ Spec source: spec.md
     function computeColumns(){
       const w = $grid().clientWidth || window.innerWidth;
       const approx = CONFIG.approxCellSizePx + CONFIG.gapPx;
-      const raw = w / approx;
-      let cols = raw;
+      const raw = w / approx; let cols = raw;
       if (CONFIG.rounding === 'floor') cols = Math.floor(raw); else if (CONFIG.rounding==='ceil') cols = Math.ceil(raw); else cols = Math.round(raw);
-      cols = clamp(cols, CONFIG.minColumns, CONFIG.maxColumns);
+      cols = Math.max(CONFIG.minColumns, Math.min(CONFIG.maxColumns, cols));
       $grid().style.setProperty('--cols', cols);
     }
 
@@ -335,29 +339,33 @@ Spec source: spec.md
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.setAttribute('role','gridcell');
-      cell.setAttribute('tabindex', idx===0 ? '0' : '-1');
-      cell.dataset.idx = String(idx);
       cell.dataset.name = filename;
-      cell.setAttribute('aria-selected', state.selected.has(filename));
 
-      const btn = document.createElement('button');
-      btn.className = 'tile';
-      btn.addEventListener('click', (e)=>{ if (!CONFIG.selectionEnabled) return openOverlay(filename); toggleSelect(filename); });
-      btn.addEventListener('dblclick', ()=> openOverlay(filename));
+      const tile = document.createElement('button');
+      tile.className = 'tile';
+      tile.type = 'button';
+      tile.tabIndex = 0;
+      tile.addEventListener('click', ()=> openOverlay(filename));
 
       const img = document.createElement('img');
-      img.alt = filename;
-      img.loading = 'lazy';
-      img.decoding = 'async';
+      img.className = 'photo'; img.alt = filename; img.loading = 'lazy'; img.decoding = 'async'; img.draggable = false;
       img.src = CONFIG.baseDir + filename;
+
       const sp = document.createElement('div'); sp.className = 'spinner';
       img.addEventListener('load', ()=> sp.remove());
-      img.addEventListener('error', ()=>{ sp.remove(); const ph = document.createElement('div'); ph.className='broken'; ph.textContent='Load failed'; btn.appendChild(ph); });
+      img.addEventListener('error', ()=>{ sp.remove(); const ph = document.createElement('div'); ph.className='broken'; ph.textContent='Load failed'; tile.appendChild(ph); });
 
-      const mark = document.createElement('div'); mark.className='mark';
+      const sel = document.createElement('input');
+      sel.type = 'checkbox';
+      sel.className = 'selbox';
+      sel.tabIndex = 0;
+      sel.setAttribute('aria-label', `Select ${filename}`);
+      sel.checked = state.selected.has(filename);
+      sel.addEventListener('click', (e)=> e.stopPropagation());
+      sel.addEventListener('change', ()=>{ toggleSelect(filename); sel.checked = state.selected.has(filename); });
 
-      btn.appendChild(img); btn.appendChild(sp);
-      cell.appendChild(btn); cell.appendChild(mark);
+      tile.appendChild(img); tile.appendChild(sp);
+      cell.appendChild(tile); cell.appendChild(sel);
       return cell;
     }
 
@@ -370,21 +378,20 @@ Spec source: spec.md
 
     function updateSelCount(){
       qs('#selCount').textContent = L('selected', state.selected.size);
-      qs('#toggleOnly').textContent = state.only ? L('onlyOn') : L('only');
+      const hasSel = state.selected.size > 0;
+      qs('#copyNames').disabled = !hasSel;
+      qs('#clearSel').disabled = !hasSel;
     }
 
     // Selection
     function toggleSelect(filename){
       if (!CONFIG.selectionEnabled) return;
       if (state.selected.has(filename)) state.selected.delete(filename); else state.selected.add(filename);
-      const cell = qsa('.cell').find(c=>c.dataset.name===filename);
-      if (cell) cell.setAttribute('aria-selected', state.selected.has(filename));
       updateSelCount();
       $live().textContent = L('selected', state.selected.size);
       pushURL();
     }
-
-    function clearSelection(){ state.selected.clear(); qsa('.cell').forEach(c=>c.setAttribute('aria-selected','false')); updateSelCount(); pushURL(); }
+    function clearSelection(){ state.selected.clear(); qsa('.selbox').forEach(b=>b.setAttribute('aria-pressed','false')); updateSelCount(); pushURL(); }
 
     // Overlay
     let touchStartX = null;
@@ -394,60 +401,95 @@ Spec source: spec.md
       const ov = $overlay(); ov.hidden = false; ov.setAttribute('open','');
       document.body.style.overflow = 'hidden';
       qs('#filenameRow').textContent = CONFIG.filenameInOverlay ? filename : '';
-      renderOverlayImage(filename);
+      renderOverlayImage(filename, 0); // initial, no slide
       qs('#ovCopyName').onclick = ()=> copyText(filename).then(()=> $live().textContent = L('copiedNames'));
       setTimeout(()=> qs('#ovClose').focus(), 0);
     }
     function closeOverlay(){
-      const ov = $overlay(); ov.hidden = true; ov.removeAttribute('open');
+      const ov = $overlay(); if (ov.hidden) return; ov.hidden = true; ov.removeAttribute('open');
       document.body.style.overflow = '';
       const prev = state.open; state.open = null; pushURL();
-      // restore focus to grid cell
-      const cell = qsa('.cell').find(c=>c.dataset.name===prev);
-      if (cell) cell.focus();
+      const tile = qsa('.cell').find(c=>c.dataset.name===prev)?.querySelector('.tile');
+      tile?.focus();
     }
     function idxOf(name){ return state.images.indexOf(name); }
     function step(delta){
-      const i = idxOf(state.open);
-      const j = clamp(i + delta, 0, state.images.length-1);
-      if (j !== i){ openOverlay(state.images[j]); }
+      const i = idxOf(state.open); const j = Math.max(0, Math.min(state.images.length-1, i+delta));
+      if (j !== i){ const dir = delta>0? 1 : -1; renderOverlayImage(state.images[j], dir); state.open = state.images[j]; pushURL(); }
     }
     function preloadAround(i){
-      const to = new Set();
       for (let d=-CONFIG.maxVisiblePreload; d<=CONFIG.maxVisiblePreload; d++){
-        const j = i + d; if (j<0||j>=state.images.length) continue; to.add(state.images[j]);
+        const j = i + d; if (j<0||j>=state.images.length) continue; const img = new Image(); img.src = CONFIG.baseDir + state.images[j];
       }
-      for (const name of to){ const img = new Image(); img.src = CONFIG.baseDir + name; }
     }
-    function renderOverlayImage(filename){
-      const wrap = qs('#ovWrap'); wrap.innerHTML = '';
-      const idx = idxOf(filename);
-      preloadAround(idx);
-      const img = new Image(); img.alt = filename; img.decoding='async'; img.src = CONFIG.baseDir + filename;
-      const sp = document.createElement('div'); sp.className = 'spinner';
-      const holder = document.createElement('div'); holder.style.position='relative'; holder.appendChild(sp);
+    function renderOverlayImage(filename, dir){
+      const frame = qs('#ovFrame');
+      const old = frame.querySelector('img, .broken');
+
+      const idx = idxOf(filename); preloadAround(idx);
+      const holder = document.createElement('div'); holder.className = 'imgwrap';
+      const img = new Image(); img.alt = filename; img.decoding='async'; img.src = CONFIG.baseDir + filename; img.draggable=false;
+
+      const sp = document.createElement('div'); sp.className = 'spinner'; holder.appendChild(sp);
       img.addEventListener('load', ()=>{ holder.replaceChildren(img); });
       img.addEventListener('error', ()=>{ const ph = document.createElement('div'); ph.className='broken'; ph.textContent='Load failed'; holder.replaceChildren(ph); });
-      wrap.appendChild(holder);
+
+      // Animate: slide current out and new in
+      if (old && dir){ old.classList.add(dir>0? 'slide-exit-left':'slide-exit-right'); }
+      holder.classList.add('slide-enter');
+      holder.style.setProperty('--fromX', dir>0? '100%':'-100%');
+      frame.innerHTML = '';
+      frame.appendChild(holder);
     }
 
     // Keyboard & focus navigation in grid
     function gridCells(){ return qsa('.grid .cell'); }
-    function moveFocusGrid(currentIdx, deltaRow, deltaCol){
-      const cells = gridCells(); const cols = parseInt(getComputedStyle($grid()).getPropertyValue('--cols')) || CONFIG.minColumns;
-      let target = currentIdx + deltaRow*cols + deltaCol;
-      target = clamp(target, 0, cells.length-1);
-      cells.forEach((c,i)=> c.tabIndex = (i===target?0:-1));
-      cells[target]?.focus();
-    }
+
+    // Arrow keys move between tiles (not affecting Tab order)
+    $grid().addEventListener('keydown', (e)=>{
+      const tiles = qsa('.grid .tile');
+      const currentIndex = tiles.indexOf(document.activeElement);
+      if (currentIndex === -1) return;
+      const cols = parseInt(getComputedStyle($grid()).getPropertyValue('--cols')) || CONFIG.minColumns;
+      let target = null;
+      switch(e.key){
+        case 'ArrowLeft': e.preventDefault(); target = Math.max(0, currentIndex-1); break;
+        case 'ArrowRight': e.preventDefault(); target = Math.min(tiles.length-1, currentIndex+1); break;
+        case 'ArrowUp': e.preventDefault(); target = Math.max(0, currentIndex - cols); break;
+        case 'ArrowDown': e.preventDefault(); target = Math.min(tiles.length-1, currentIndex + cols); break;
+        case 'Home': e.preventDefault(); target = Math.floor(currentIndex/cols)*cols; break;
+        case 'End': e.preventDefault(); target = Math.min(tiles.length-1, Math.floor(currentIndex/cols)*cols + (cols-1)); break;
+        case 'PageUp': e.preventDefault(); window.scrollBy({ top: -window.innerHeight*0.9, behavior: 'smooth' }); target = Math.max(0, currentIndex - cols); break;
+        case 'PageDown': e.preventDefault(); window.scrollBy({ top: window.innerHeight*0.9, behavior: 'smooth' }); target = Math.min(tiles.length-1, currentIndex + cols); break;
+        case 'Enter': case ' ': e.preventDefault(); document.activeElement.click(); return;
+      }
+      if (target!=null) tiles[target]?.focus();
+    });
+
+    // Overlay keys & interactions
+    document.addEventListener('keydown', (e)=>{
+      if ($overlay().hidden) return;
+      if (e.key === 'Escape') { e.preventDefault(); closeOverlay(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+      else if (e.key === ' ') { e.preventDefault(); toggleSelect(state.open); }
+    });
+
+    // Swipe (touch)
+    let touchStart = null;
+    qs('#ovStage').addEventListener('touchstart', (e)=>{ if (e.touches.length===1) touchStart = e.touches[0].clientX; }, {passive:true});
+    qs('#ovStage').addEventListener('touchend', (e)=>{
+      if (touchStart==null) return; const dx = (e.changedTouches[0].clientX - touchStart); touchStart=null; const thr = 30; if (dx > thr) step(-1); else if (dx < -thr) step(1);
+    });
+
+    // Backdrop click closes (ignore clicks on content or nav buttons)
+    qs('#ovStage').addEventListener('click', (e)=>{
+      const frame = qs('#ovFrame');
+      if (!frame.contains(e.target)) closeOverlay();
+    });
 
     // Persistence & tab sync
-    function loadPersisted(){
-      try {
-        const raw = localStorage.getItem(storageKey()); if (!raw) return null; return JSON.parse(raw);
-      } catch { return null; }
-    }
-
+    function loadPersisted(){ try { const raw = localStorage.getItem(storageKey()); if (!raw) return null; return JSON.parse(raw); } catch { return null; } }
     window.addEventListener('storage', (e)=>{
       if (e.key !== storageKey()) return;
       try {
@@ -461,54 +503,20 @@ Spec source: spec.md
 
     // Controls
     function setupControls(){
-      qs('#copyLink').onclick = async ()=>{ const ok = await copyText(location.href); $live().textContent = L('copied'); };
-      qs('#copyNames').onclick = async ()=>{ const list = Array.from(state.selected); if (!list.length) return; const ok = await copyText(list.join('\n')); $live().textContent = L('copiedNames'); };
-      qs('#toggleOnly').onclick = ()=>{ state.only = !state.only; applyLangToUI(); renderGrid(); pushURL(); };
+      qs('#shareOrCopy').onclick = async ()=>{
+        if (navigator.share) { try { await navigator.share({ url: location.href }); } catch {} }
+        else { await copyText(location.href); $live().textContent = L('copied'); }
+      }; $live().textContent = L('copied'); };
+      qs('#copyNames').onclick = async ()=>{ const list = Array.from(state.selected); if (!list.length) return; const ok = await copyText(list.join('
+')); $live().textContent = L('copiedNames'); };
+      qs('#onlyChk').onchange = ()=>{ state.only = qs('#onlyChk').checked; renderGrid(); pushURL(); updateSelCount(); }; applyLangToUI(); renderGrid(); pushURL(); };
       qs('#clearSel').onclick = ()=>{ clearSelection(); };
       qs('#toggleLang').onclick = ()=>{ state.lang = (state.lang==='en'?'sv':'en'); applyLangToUI(); pushURL(); };
 
-      // Overlay controls
-      qs('#ovClose').onclick = ()=> closeOverlay();
       qs('#ovPrev').onclick = ()=> step(-1);
       qs('#ovNext').onclick = ()=> step(1);
+      qs('#ovClose').onclick = ()=> closeOverlay();
 
-      // Grid: clicks & keyboard
-      $grid().addEventListener('keydown', (e)=>{
-        const cells = gridCells();
-        const current = document.activeElement.closest('.cell');
-        const idx = current? Number(current.dataset.idx): 0;
-        switch(e.key){
-          case 'ArrowLeft': e.preventDefault(); moveFocusGrid(idx, 0, -1); break;
-          case 'ArrowRight': e.preventDefault(); moveFocusGrid(idx, 0, 1); break;
-          case 'ArrowUp': e.preventDefault(); moveFocusGrid(idx, -1, 0); break;
-          case 'ArrowDown': e.preventDefault(); moveFocusGrid(idx, 1, 0); break;
-          case 'Home': e.preventDefault(); moveFocusGrid(idx, 0, -9999); break;
-          case 'End': e.preventDefault(); moveFocusGrid(idx, 0, 9999); break;
-          case 'PageUp': e.preventDefault(); window.scrollBy({ top: -window.innerHeight*0.9, behavior: 'smooth' }); moveFocusGrid(idx, -1, 0); break;
-          case 'PageDown': e.preventDefault(); window.scrollBy({ top: window.innerHeight*0.9, behavior: 'smooth' }); moveFocusGrid(idx, 1, 0); break;
-          case 'Enter': e.preventDefault(); openOverlay(current?.dataset.name); break;
-          case ' ': // Space toggles selection
-            e.preventDefault(); if (current) toggleSelect(current.dataset.name); break;
-        }
-      });
-
-      // Overlay keys
-      document.addEventListener('keydown', (e)=>{
-        if ($overlay().hidden) return;
-        if (e.key === 'Escape') { e.preventDefault(); closeOverlay(); }
-        else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
-        else if (e.key === ' ') { e.preventDefault(); toggleSelect(state.open); }
-      });
-
-      // Swipe (touch)
-      qs('#ovWrap').addEventListener('touchstart', (e)=>{ if (e.touches.length===1) touchStartX = e.touches[0].clientX; }, {passive:true});
-      qs('#ovWrap').addEventListener('touchend', (e)=>{
-        if (touchStartX==null) return; const dx = (e.changedTouches[0].clientX - touchStartX); touchStartX=null;
-        const thr = 30; if (dx > thr) step(-1); else if (dx < -thr) step(1);
-      });
-
-      // Resize grid columns
       window.addEventListener('resize', debounce(computeColumns, 50));
     }
 
@@ -527,32 +535,17 @@ Spec source: spec.md
 
     function initializeFromStorage(){
       const v = loadPersisted(); if (!v) return;
-      if (!location.search) { // only if URL had no explicit intent
-        state.selected = new Set(Array.isArray(v.sel)?v.sel:[]);
-        state.only = !!v.only; state.open = v.open || null; state.lang = v.lang || state.lang; state.v = v.v || state.v;
-      }
+      if (!location.search) { state.selected = new Set(Array.isArray(v.sel)?v.sel:[]); state.only = !!v.only; state.open = v.open || null; state.lang = v.lang || state.lang; state.v = v.v || state.v; }
     }
-
-    // Public helpers (link buttons)
-    function copyLinkToClipboard(){ copyText(location.href).then(()=> $live().textContent=L('copied')); }
 
     // Boot
     (async function boot(){
       applyTheme();
       setupControls();
-      await loadImages(); // may throw
-
-      // compute images hash before storage key usage
+      await loadImages();
       initializeFromURL();
       if (!state.selected.size && !state.open) initializeFromStorage();
-
-      applyLangToUI();
-      hideBanner(); // clear any older banners before validation messages below
-
-      renderGrid();
-      updateSelCount();
-      pushURL();
-      if (state.open) openOverlay(state.open);
+      applyLangToUI(); hideBanner(); renderGrid(); updateSelCount(); pushURL(); if (state.open) openOverlay(state.open);
     })();
   </script>
 </body>
