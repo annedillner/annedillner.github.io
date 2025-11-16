@@ -1,0 +1,48 @@
+name: Deploy Pages (with LFS)
+
+on:
+  push:
+    branches: [ main ]   # ← change if your default branch is not 'main'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with LFS)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # If your site is just static files, no build step is needed.
+      # We copy everything into a clean folder to avoid uploading repo internals.
+      - name: Prepare site folder
+        run: |
+          rm -rf _site
+          mkdir _site
+          shopt -s extglob
+          cp -R !(._site|.git|.github) _site || true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
