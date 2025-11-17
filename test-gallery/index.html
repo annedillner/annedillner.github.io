@@ -1,551 +1,2022 @@
 <!--
-Photo Selector Web App
-Generated from spec v2.3.1 on 2025-11-16
-Spec source: spec.md
+  Photo Selector Web App
+  Generated from spec v2.5.0 on 2025-11-17
+  Spec source: spec.txt
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Photo Selector</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      /* JS will keep these in sync with CONFIG */
-      --bgColor: #777;
-      --cellPaddingPx: 8px;
-      --gapPx: 8px;
-      --cellBorderPx: 1px;
-      --cellBorderColor: rgba(255,255,255,0.25);
-      --uiGrayHigh: rgba(255,255,255,0.85);
-      --uiGrayMid: rgba(255,255,255,0.55);
-      --uiGrayLow: rgba(255,255,255,0.25);
-      --controlSizePx: 40px;
-      --controlInsetPx: 12px;
-      --overlayPaddingPx: 16px;
-      --focusTileBg: rgba(0,0,0,0.28);
+      --bg-color: #777;
+      --cell-padding: 8px;
+      --gap: 8px;
+      --cell-border: 1px;
+      --cell-border-color: rgba(255, 255, 255, 0.25);
+      --ui-gray-high: rgba(255, 255, 255, 0.85);
+      --ui-gray-mid: rgba(255, 255, 255, 0.55);
+      --ui-gray-low: rgba(255, 255, 255, 0.25);
+      --focus-tile-bg: rgba(0, 0, 0, 0.28);
+      --control-size: 44px;
+      --control-inset: 12px;
+      --overlay-padding: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     html, body {
-      height: 100%;
       margin: 0;
-      background: var(--bgColor);
-      color: var(--uiGrayHigh);
-      font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      /* IMPORTANT: No grayscale filters anywhere; photos retain color */
-      user-select: none; /* prevent accidental selection globally */
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: var(--bg-color);
+      color: var(--ui-gray-high);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    /* Allow selection where it makes sense */
-    .allow-select { user-select: text; }
+    body {
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
 
     /* Top bar */
-    .topbar {
-      position: sticky; top: 0; z-index: 50;
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      padding: 8px; backdrop-filter: blur(4px);
-      background: color-mix(in srgb, var(--bgColor) 80%, #000 20%);
-      border-bottom: 1px solid var(--cellBorderColor);
-    }
-    .spacer { flex: 1; }
-    .btn {
-      appearance: none; border: 1px solid var(--cellBorderColor);
-      background: transparent; color: var(--uiGrayHigh);
-      padding: 6px 10px; border-radius: 8px; cursor: pointer;
-      font: inherit; line-height: 1; display: inline-flex; align-items: center; gap: 6px;
-    }
-    .btn[aria-pressed="true"], .btn:focus-visible { outline: 2px solid var(--uiGrayHigh); outline-offset: 2px; }
-    .btn:hover { background: color-mix(in srgb, var(--bgColor) 88%, #000 12%); }
-    .count { white-space: nowrap; }
 
-    /* Error banner */
-    .banner { position: sticky; top: 48px; z-index: 40; margin: 0; padding: 8px 12px; background: #0006; color: var(--uiGrayHigh); border-block: 1px solid var(--cellBorderColor); }
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .top-bar-right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .top-bar-status {
+      font-size: 0.9rem;
+      color: var(--ui-gray-high);
+      white-space: nowrap;
+    }
+
+    .top-bar-controls label,
+    .top-bar-controls button,
+    .top-bar-controls select {
+      font-size: 0.85rem;
+    }
+
+    .top-bar-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--ui-gray-high);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-label input[type="checkbox"] {
+      accent-color: #fff;
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: 6px 12px;
+      border: 1px solid var(--ui-gray-low);
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--ui-gray-high);
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 30px;
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .btn:hover:not(:disabled),
+    .btn:focus-visible:not(:disabled) {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-icon {
+      font-size: 0.95em;
+      line-height: 1;
+    }
+
+    .lang-select-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--ui-gray-mid);
+      font-size: 0.85rem;
+    }
+
+    #language-select {
+      border-radius: 999px;
+      border: 1px solid var(--ui-gray-low);
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--ui-gray-high);
+      padding: 4px 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    #help-btn {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    /* Banner */
+
+    .banner {
+      position: sticky;
+      top: 44px; /* approx topbar height; will be fine in practice */
+      z-index: 19;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: rgba(255, 179, 0, 0.9);
+      color: #000;
+      font-size: 0.85rem;
+    }
+
+    .banner.visible {
+      display: flex;
+    }
+
+    .banner-message {
+      flex: 1;
+      padding-right: 8px;
+    }
+
+    .banner-close {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 2px 6px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      min-height: 0;
+    }
 
     /* Grid */
+
     .grid {
-      padding: var(--gapPx);
       display: grid;
-      grid-template-columns: repeat(var(--cols, 3), 1fr);
-      gap: var(--gapPx);
+      grid-auto-rows: 1fr;
+      gap: var(--gap);
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
     }
-    .cell { position: relative; aspect-ratio: 1/1; border: var(--cellBorderPx) solid var(--cellBorderColor); border-radius: 6px; overflow: hidden; background: #0002; }
 
-    /* Each tile is a button */
-    .tile { all: unset; display: grid; place-items: center; width: 100%; height: 100%; cursor: pointer; }
-    .tile:focus-visible { outline: 2px solid var(--uiGrayHigh); outline-offset: 2px; background: var(--focusTileBg); }
+    .grid[aria-busy="true"] {
+      opacity: 0.6;
+    }
 
-    img.photo { width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; user-drag: none; }
+    .photo-tile {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.35);
+      border: var(--cell-border) solid var(--cell-border-color);
+      outline: none;
+      cursor: pointer;
+      user-select: none;
+    }
 
-    /* selection box (corner) */
-    .selbox { position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--uiGrayMid); background: #0006; display: grid; place-items: center; cursor: pointer; }
-    .selbox:focus-visible { outline: 2px solid var(--uiGrayHigh); outline-offset: 2px; }
-    .selbox::after { content: ""; width: 14px; height: 14px; box-shadow: inset 0 0 0 2px transparent; border-radius: 2px; border: 1px solid var(--uiGrayLow); }
-    .selbox[aria-pressed="true"]::after { box-shadow: inset 0 0 0 2px var(--uiGrayHigh); }
+    .photo-tile-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
 
-    /* Spinner */
-    .spinner { width: 24px; height: 24px; border: 2px solid var(--uiGrayLow); border-top-color: var(--uiGrayHigh); border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .photo-img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: rgba(0, 0, 0, 0.4);
+      -webkit-user-drag: none;
+    }
+
+    .photo-img[aria-hidden="true"] {
+      display: none;
+    }
+
+    .photo-tile:focus-visible {
+      outline: 2px solid #fff;
+      box-shadow: 0 0 0 2px var(--focus-tile-bg);
+    }
+
+    .photo-tile.selected::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.15), transparent 55%);
+      pointer-events: none;
+    }
+
+    .tile-select-btn {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid var(--ui-gray-low);
+      background: rgba(0, 0, 0, 0.6);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      color: var(--ui-gray-high);
+    }
+
+    .tile-select-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .tile-select-btn-icon {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .photo-tile:not(.selected) .tile-select-btn-icon {
+      opacity: 0.2;
+    }
+
+    .photo-tile.selected .tile-select-btn-icon {
+      opacity: 1;
+    }
+
+    .tile-spinner,
+    .tile-error {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      color: var(--ui-gray-mid);
+      background: rgba(0, 0, 0, 0.5);
+      text-align: center;
+      padding: 4px;
+    }
+
+    .tile-spinner-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: rgba(255, 255, 255, 0.9);
+      animation: spin 0.8s linear infinite;
+    }
+
+    .tile-error {
+      background: rgba(128, 0, 0, 0.7);
+      color: #ffdede;
+    }
+
+    .tile-loaded .tile-spinner {
+      display: none;
+    }
+
+    .tile-loaded .tile-error {
+      display: none;
+    }
+
+    .tile-failed .tile-spinner {
+      display: none;
+    }
+
+    .tile-failed .photo-img {
+      opacity: 0.1;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .empty-state {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 0.95rem;
+      color: var(--ui-gray-mid);
+    }
 
     /* Overlay */
-    .overlay { position: fixed; inset: 0; z-index: 100; display: none; background: color-mix(in srgb, var(--bgColor) 70%, #000 30%); }
-    .overlay[open] { display: grid; grid-template-rows: auto 1fr; }
-    .overlay .chrome { display: flex; gap: 8px; align-items: center; padding: 8px; border-bottom: 1px solid var(--cellBorderColor); }
-    .overlay .stage { position: relative; overflow: hidden; display: grid; place-items: center; padding: var(--overlayPaddingPx); touch-action: none; }
-    .overlay .track { position: relative; width: 100%; height: calc(100% - 2*var(--overlayPaddingPx)); display: grid; grid-template-columns: 100% 100%; }
-    .overlay .frame { position: absolute; inset: 0; display: grid; place-items: center; }
-    .overlay .imgwrap { max-width: min(100%, var(--overlayMaxWidth, 100%)); max-height: 100%; }
-    .overlay .imgwrap img { width: 100%; height: 100%; object-fit: contain; -webkit-user-drag: none; user-drag: none; }
 
-    /* Overlay controls */
-    .navbtn { position: absolute; top: 50%; transform: translateY(-50%); width: var(--controlSizePx); height: var(--controlSizePx); border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--cellBorderColor); background: #0006; cursor: pointer; }
-    .navbtn:focus-visible { outline: 2px solid var(--uiGrayHigh); }
-    .prev { left: var(--controlInsetPx); }
-    .next { right: var(--controlInsetPx); }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: stretch;
+      justify-content: center;
+    }
 
-    .close { position: absolute; top: var(--controlInsetPx); right: var(--controlInsetPx); }
+    .overlay.visible {
+      display: flex;
+    }
 
-    /* Failure placeholder */
-    .broken { width: 50%; aspect-ratio: 1/1; display: grid; place-items: center; border: 1px dashed var(--uiGrayLow); border-radius: 8px; color: var(--uiGrayMid); }
+    .overlay-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+    }
 
-    /* High-contrast focus always visible */
-    :focus-visible { outline: 2px solid var(--uiGrayHigh); outline-offset: 2px; }
+    .overlay-shell {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      padding: var(--overlay-padding);
+      pointer-events: none;
+    }
 
-    /* Filename row inside overlay (under top bar) */
-    .filename-row { margin-left: 8px; color: var(--uiGrayMid); }
+    .overlay-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      pointer-events: auto;
+    }
 
-    /* Simple slide animation classes */
-    .slide-enter { animation: slideIn var(--swipeMs, 220ms) ease both; }
-    .slide-exit-left { animation: slideOutLeft var(--swipeMs, 220ms) ease both; }
-    .slide-exit-right { animation: slideOutRight var(--swipeMs, 220ms) ease both; }
-    @keyframes slideIn { from { transform: translateX(var(--fromX, 100%)); opacity: 0.7; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes slideOutLeft { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-20%); opacity: 0; } }
-    @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(20%); opacity: 0; } }
+    .overlay-filename-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      color: var(--ui-gray-high);
+      font-size: 0.9rem;
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 999px;
+      padding: 4px 10px;
+      user-select: text;
+    }
+
+    .overlay-filename {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+
+    #overlay-copy-filename-btn {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+    }
+
+    .overlay-close-btn {
+      width: var(--control-size);
+      height: var(--control-size);
+      border-radius: 999px;
+      border: 1px solid var(--ui-gray-low);
+      background: rgba(0, 0, 0, 0.7);
+      color: var(--ui-gray-high);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .overlay-close-btn:hover,
+    .overlay-close-btn:focus-visible {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .overlay-stage {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      touch-action: none;
+      overflow: hidden;
+    }
+
+    .overlay-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: var(--control-size);
+      height: var(--control-size);
+      border-radius: 999px;
+      border: 1px solid var(--ui-gray-low);
+      background: rgba(0, 0, 0, 0.7);
+      color: var(--ui-gray-high);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .overlay-nav-btn:hover,
+    .overlay-nav-btn:focus-visible {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    #overlay-prev-btn {
+      left: var(--control-inset);
+    }
+
+    #overlay-next-btn {
+      right: var(--control-inset);
+    }
+
+    .overlay-img-wrap {
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .overlay-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      -webkit-user-drag: none;
+      user-select: none;
+    }
+
+    .overlay-spinner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .overlay-spinner .tile-spinner-icon {
+      width: 28px;
+      height: 28px;
+    }
+
+    .overlay-select-btn {
+      position: absolute;
+      top: var(--control-inset);
+      right: calc(var(--control-inset) + var(--control-size) + 8px);
+      width: var(--control-size);
+      height: var(--control-size);
+      border-radius: 999px;
+      border: 1px solid var(--ui-gray-low);
+      background: rgba(0, 0, 0, 0.8);
+      color: var(--ui-gray-high);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .overlay-select-btn[aria-pressed="true"] {
+      background: rgba(76, 175, 80, 0.85);
+    }
+
+    .overlay-select-btn-icon {
+      font-size: 1.2rem;
+    }
+
+    /* Swipe animation */
+
+    .overlay-img-slide {
+      transition: transform var(--swipe-ms, 220ms) ease-out;
+    }
+
+    .overlay-img-slide.slide-left {
+      animation: slide-left var(--swipe-ms, 220ms) ease-out;
+    }
+
+    .overlay-img-slide.slide-right {
+      animation: slide-right var(--swipe-ms, 220ms) ease-out;
+    }
+
+    @keyframes slide-left {
+      from {
+        transform: translateX(40px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slide-right {
+      from {
+        transform: translateX(-40px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .overlay-img-slide {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    /* Help modal */
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.visible {
+      display: flex;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-dialog {
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+      width: 90%;
+      background: #111;
+      color: var(--ui-gray-high);
+      border-radius: 12px;
+      padding: 16px 18px 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-title {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+
+    .modal-body {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: var(--ui-gray-mid);
+      white-space: pre-wrap;
+    }
+
+    .modal-footer {
+      margin-top: 12px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .no-selection .tile-select-btn,
+    .no-selection .overlay-select-btn,
+    .no-selection #copy-filenames-btn,
+    .no-selection #clear-selection-btn,
+    .no-selection #show-only-selected {
+      display: none !important;
+    }
+
+    .no-selection #selection-summary {
+      visibility: hidden;
+    }
+
+    @media (max-width: 640px) {
+      .top-bar {
+        flex-wrap: wrap;
+        gap: 4px 8px;
+      }
+      .top-bar-right {
+        justify-content: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="topbar" role="region" aria-label="Top bar">
-    <div id="selCount" class="count" aria-live="polite">0 selected</div>
-    <div class="spacer"></div>
-    <button class="btn" id="shareOrCopy" aria-label="Share or copy link">Copy link</button>
-    <button class="btn" id="copyNames" aria-label="Copy filenames" disabled>Copy filenames</button>
-    <label class="btn" id="onlyWrap"><input type="checkbox" id="onlyChk" aria-label="Show only selected"> <span id="onlyLbl">Show only selected</span></label>
-    <button class="btn" id="clearSel" aria-label="Clear selection" disabled>Clear</button>
-    <button class="btn" id="toggleLang" aria-label="Toggle language">EN/SV</button>
-  </div>
-  <p id="banner" class="banner allow-select" hidden></p>
+  <div id="app">
+    <header class="top-bar" id="top-bar">
+      <div class="top-bar-left">
+        <div id="selection-summary" class="top-bar-status" aria-live="polite" role="status">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+      <div class="top-bar-right top-bar-controls">
+        <label class="toggle-label">
+          <input type="checkbox" id="show-only-selected" />
+          <span id="show-only-selected-label">Show only selected</span>
+        </label>
 
-  <main>
-    <div id="grid" class="grid" role="grid" aria-label="Photos grid"></div>
-  </main>
+        <button type="button" class="btn" id="share-or-link-btn">
+          <span class="btn-icon" aria-hidden="true">🔗</span>
+          <span id="share-or-link-label">Copy link</span>
+        </button>
+
+        <button type="button" class="btn" id="copy-filenames-btn" disabled>
+          <span class="btn-icon" aria-hidden="true">📋</span>
+          <span id="copy-filenames-label">Copy filenames</span>
+        </button>
+
+        <button type="button" class="btn" id="clear-selection-btn" disabled>
+          <span class="btn-icon" aria-hidden="true">✕</span>
+          <span id="clear-selection-label">Clear selection</span>
+        </button>
+
+        <span class="lang-select-wrap">
+          <span id="language-label">Language</span>
+          <select id="language-select" aria-label="Language">
+            <option value="en">EN</option>
+            <option value="sv">SV</option>
+          </select>
+        </span>
+
+        <button type="button" class="btn" id="help-btn" aria-haspopup="dialog" aria-expanded="false">
+          ?
+        </button>
+      </div>
+    </header>
+
+    <div class="banner" id="banner" role="status" aria-live="polite">
+      <div class="banner-message" id="banner-message"></div>
+      <button type="button" class="banner-close" id="banner-close-btn" aria-label="Dismiss message">✕</button>
+    </div>
+
+    <main>
+      <div id="grid" class="grid" role="grid" aria-label="Photo gallery" aria-busy="false">
+        <!-- Tiles injected here -->
+      </div>
+      <div id="empty-state" class="empty-state" hidden>
+        No photos available in this gallery.
+      </div>
+    </main>
+
+    <!-- Generic live region for announcements -->
+    <div id="live-region" class="visually-hidden" aria-live="polite"></div>
+  </div>
 
   <!-- Overlay -->
-  <section id="overlay" class="overlay" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
-    <div class="chrome">
-      <button class="btn" id="ovClose" class="close" aria-label="Close" title="Esc">✕</button>
-      <div class="filename-row allow-select" id="filenameRow"></div>
-      <div class="spacer"></div>
-      <button class="btn" id="ovCopyName" aria-label="Copy filename">Copy filename</button>
-    </div>
-    <div class="stage" id="ovStage">
-      <button class="navbtn prev" id="ovPrev" aria-label="Previous" title="←">◀</button>
-      <button class="navbtn next" id="ovNext" aria-label="Next" title="→">▶</button>
-      <div class="frame" id="ovFrame"></div>
-    </div>
-  </section>
 
-  <div id="live" class="sr-only" aria-live="polite"></div>
+  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="overlay-backdrop" data-overlay-close></div>
+    <div class="overlay-shell">
+      <div class="overlay-top-row">
+        <button type="button" class="overlay-close-btn" id="overlay-close-btn" aria-label="Close image viewer">
+          ✕
+        </button>
+        <div class="overlay-filename-row" id="overlay-filename-row">
+          <span class="overlay-filename" id="overlay-filename"></span>
+          <button type="button" class="btn" id="overlay-copy-filename-btn">
+            <span class="btn-icon" aria-hidden="true">📋</span>
+            <span id="overlay-copy-filename-label">Copy filename</span>
+          </button>
+        </div>
+      </div>
+      <div class="overlay-stage" id="overlay-stage">
+        <button type="button" class="overlay-nav-btn" id="overlay-prev-btn" aria-label="Previous photo">
+          ‹
+        </button>
+        <div class="overlay-img-wrap">
+          <div class="overlay-spinner" id="overlay-spinner">
+            <div class="tile-spinner-icon tile-spinner-icon-overlay tile-spinner-icon"></div>
+          </div>
+          <img id="overlay-img" class="overlay-img overlay-img-slide" alt="" draggable="false" />
+        </div>
+        <button type="button" class="overlay-nav-btn" id="overlay-next-btn" aria-label="Next photo">
+          ›
+        </button>
+        <button type="button" class="overlay-select-btn" id="overlay-select-btn" aria-pressed="false" aria-label="Toggle selection for this photo">
+          <span class="overlay-select-btn-icon" aria-hidden="true">✓</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help modal -->
+
+  <div id="help-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title" aria-hidden="true">
+    <div class="modal-backdrop" data-help-close></div>
+    <div class="modal-dialog">
+      <h2 id="help-title" class="modal-title">How to use this gallery</h2>
+      <div id="help-body" class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="help-close-btn">OK</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    // === Configuration & Tunables (v2.3) ===
-    const CONFIG = {
-      baseDir: "photos/",
-      approxCellSizePx: 180,
-      cellPaddingPx: 8,
-      gapPx: 8,
-      bgColor: "#777",
-      cellBorderPx: 1,
-      cellBorderColor: "rgba(255,255,255,0.25)",
-      uiGrayHigh: "rgba(255,255,255,0.85)",
-      uiGrayMid:  "rgba(255,255,255,0.55)",
-      uiGrayLow:  "rgba(255,255,255,0.25)",
+    (function () {
+      "use strict";
 
-      minColumns: 2,
-      maxColumns: 12,
-      rounding: "nearest", // nearest | floor | ceil
+      const CONFIG = {
+        baseDir: "photos/",
+        images: [
+          "IMG_0001.jpg",
+          "IMG_0002.jpg"
+        ],
+        imagesHash: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        approxCellSizePx: 180,
+        cellPaddingPx: 8,
+        gapPx: 8,
+        bgColor: "#777",
+        cellBorderPx: 1,
+        cellBorderColor: "rgba(255,255,255,0.25)",
+        uiGrayHigh: "rgba(255,255,255,0.85)",
+        uiGrayMid: "rgba(255,255,255,0.55)",
+        uiGrayLow: "rgba(255,255,255,0.25)",
+        minColumns: 2,
+        maxColumns: 12,
+        rounding: "nearest", // nearest | floor | ceil
+        gridMaxScale: 1.0,
+        overlayMaxScale: 1.0,
+        overlayPaddingPx: 16,
+        controlSizePx: 44,
+        controlInsetPx: 12,
+        swipeAnimMs: 220,
+        maxVisiblePreload: 2,
+        selectionEnabled: true,
+        showOnlySelectedDefault: false,
+        filenameInOverlay: true,
+        localeDefault: "en",
+        focusTileBg: "rgba(0,0,0,0.28)",
+        urlDebounceMs: 300,
+        confirmClear: false,
+        helpButton: true,
+        helpContentText: null, // or plain text
+        i18n: {
+          en: {
+            selectedCount: "{n} photos selected",
+            showOnlySelected: "Show only selected",
+            copyLink: "Copy link",
+            share: "Share",
+            copyFilenames: "Copy filenames",
+            clearSelection: "Clear selection",
+            language: "Language",
+            help: "Help",
+            helpTitle: "How to use this gallery",
+            helpBody: "Select with checkbox or S. Open with Enter/Space. Arrows to move. Esc to close.",
+            linkCopied: "Link copied",
+            unknownSel: "These images aren’t part of this gallery: {list}",
+            unknownOpen: "Can’t open ‘{name}’ — not in this gallery.",
+            copyFilename: "Copy filename"
+          },
+          sv: {
+            selectedCount: "{n} foton valda",
+            showOnlySelected: "Visa bara valda",
+            copyLink: "Kopiera länk",
+            share: "Dela",
+            copyFilenames: "Kopiera filnamn",
+            clearSelection: "Rensa val",
+            language: "Språk",
+            help: "Hjälp",
+            helpTitle: "Så använder du galleriet",
+            helpBody:
+              "Markera med kryssruta eller S. Öppna med Enter/Blanksteg. Piltangenter för att flytta. Esc stänger.",
+            linkCopied: "Länk kopierad",
+            unknownSel: "Dessa bilder finns inte i det här galleriet: {list}",
+            unknownOpen: "Kan inte öppna ‘{name}’ — finns inte i det här galleriet.",
+            copyFilename: "Kopiera filnamn"
+          }
+        }
+      };
 
-      gridMaxScale: 1.0,
-      overlayMaxScale: 1.0,
-      overlayPaddingPx: 16,
-      controlSizePx: 40,
-      controlInsetPx: 12,
-      swipeAnimMs: 220,
-      maxVisiblePreload: 2,
+      // Theme into CSS variables
+      document.documentElement.style.setProperty("--bg-color", CONFIG.bgColor);
+      document.documentElement.style.setProperty("--cell-padding", CONFIG.cellPaddingPx + "px");
+      document.documentElement.style.setProperty("--gap", CONFIG.gapPx + "px");
+      document.documentElement.style.setProperty("--cell-border", CONFIG.cellBorderPx + "px");
+      document.documentElement.style.setProperty("--cell-border-color", CONFIG.cellBorderColor);
+      document.documentElement.style.setProperty("--ui-gray-high", CONFIG.uiGrayHigh);
+      document.documentElement.style.setProperty("--ui-gray-mid", CONFIG.uiGrayMid);
+      document.documentElement.style.setProperty("--ui-gray-low", CONFIG.uiGrayLow);
+      document.documentElement.style.setProperty("--focus-tile-bg", CONFIG.focusTileBg);
+      document.documentElement.style.setProperty("--control-size", CONFIG.controlSizePx + "px");
+      document.documentElement.style.setProperty("--control-inset", CONFIG.controlInsetPx + "px");
+      document.documentElement.style.setProperty("--overlay-padding", CONFIG.overlayPaddingPx + "px");
+      document.documentElement.style.setProperty("--swipe-ms", CONFIG.swipeAnimMs + "ms");
 
-      selectionEnabled: true,
-      showOnlySelectedDefault: false,
-      filenameInOverlay: true,
-
-      localeDefault: "en",
-
-      focusTileBg: "rgba(0,0,0,0.28)",
-
-      // Image manifest URL; expected schema: { images: ["IMG_0001.jpg", ...] }
-      manifest: "manifest.json"
-    };
-
-    // UI strings (EN/SV)
-    const STR = {
-      en: {
-        selected: n => `${n} photo${n===1?'':'s'} selected`,
-        copyLink: "Copy link",
-        share: "Share",
-        copied: "Link copied",
-        copyNames: "Copy filenames",
-        copiedNames: "Filenames copied",
-        only: "Show only selected",
-        clear: "Clear",
-        filenameCopy: "Copy filename",
-        openUnknown: name => `Cannot open ‘${name}’ — not part of this gallery.`,
-        selUnknown: list => `These images aren’t part of this gallery: ${list.join(', ')}`,
-        dupes: list => `Blocking error: duplicate filenames in config: ${list.join(', ')}`,
-        loadManifestFail: `Blocking error: couldn’t load image manifest. Ensure ${CONFIG.baseDir}${CONFIG.manifest} exists.`,
-      },
-      sv: {
-        selected: n => `${n} bild${n===1?'':'er'} valda`,
-        copyLink: "Kopiera länk",
-        share: "Dela",
-        copied: "Länk kopierad",
-        copyNames: "Kopiera filnamn",
-        copiedNames: "Filnamn kopierade",
-        only: "Visa bara valda",
-        clear: "Rensa",
-        filenameCopy: "Kopiera filnamn",
-        openUnknown: name => `Kan inte öppna ‘${name}’ — finns inte i detta galleri.`,
-        selUnknown: list => `Dessa bilder ingår inte i galleriet: ${list.join(', ')}`,
-        dupes: list => `Blockerande fel: dubbletter i konfigurationen: ${list.join(', ')}`,
-        loadManifestFail: `Blockerande fel: kunde inte läsa manifestet. Se till att ${CONFIG.baseDir}${CONFIG.manifest} finns.`,
+      if (!CONFIG.selectionEnabled) {
+        document.body.classList.add("no-selection");
       }
-    };
 
-    // Apply CSS variables from CONFIG
-    function applyTheme() {
-      const r = document.documentElement.style;
-      r.setProperty('--bgColor', CONFIG.bgColor);
-      r.setProperty('--cellPaddingPx', CONFIG.cellPaddingPx + 'px');
-      r.setProperty('--gapPx', CONFIG.gapPx + 'px');
-      r.setProperty('--cellBorderPx', CONFIG.cellBorderPx + 'px');
-      r.setProperty('--cellBorderColor', CONFIG.cellBorderColor);
-      r.setProperty('--uiGrayHigh', CONFIG.uiGrayHigh);
-      r.setProperty('--uiGrayMid', CONFIG.uiGrayMid);
-      r.setProperty('--uiGrayLow', CONFIG.uiGrayLow);
-      r.setProperty('--controlSizePx', CONFIG.controlSizePx + 'px');
-      r.setProperty('--controlInsetPx', CONFIG.controlInsetPx + 'px');
-      r.setProperty('--overlayPaddingPx', CONFIG.overlayPaddingPx + 'px');
-      r.setProperty('--focusTileBg', CONFIG.focusTileBg);
-      document.documentElement.style.setProperty('--swipeMs', CONFIG.swipeAnimMs + 'ms');
-    }
+      const images = CONFIG.images.slice();
+      const imagesSet = new Set(images);
 
-    // Utilities
-    const qs = sel => document.querySelector(sel);
-    const qsa = sel => Array.from(document.querySelectorAll(sel));
-    const $grid = () => qs('#grid');
-    const $overlay = () => qs('#overlay');
-    const $banner = () => qs('#banner');
-    const $live = () => qs('#live');
+      // Duplicate filename detection
+      (function checkDuplicates() {
+        const seen = new Set();
+        const dups = [];
+        for (const name of images) {
+          if (seen.has(name)) dups.push(name);
+          else seen.add(name);
+        }
+        if (dups.length) {
+          const msg =
+            "Configuration error: duplicate filenames in manifest — " + dups.join(", ");
+          const container = document.getElementById("grid");
+          container.innerHTML = "";
+          const err = document.createElement("div");
+          err.className = "empty-state";
+          err.style.color = "#ffdede";
+          err.textContent = msg;
+          container.appendChild(err);
+          document.getElementById("empty-state").hidden = true;
+          // Block further startup
+          throw new Error(msg);
+        }
+      })();
 
-    const debounce = (fn, ms=250) => { let t; return (...a)=>{ clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; };
-    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-    const hash = (str) => { let h = 0x811c9dc5; for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = (h>>>0) + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)); } return (h>>>0).toString(36); };
-    const copyText = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
+      // DOM references
+      const gridEl = document.getElementById("grid");
+      const emptyStateEl = document.getElementById("empty-state");
+      const selectionSummaryEl = document.getElementById("selection-summary");
+      const showOnlyCheckbox = document.getElementById("show-only-selected");
+      const showOnlyLabelEl = document.getElementById("show-only-selected-label");
+      const shareOrLinkBtn = document.getElementById("share-or-link-btn");
+      const shareOrLinkLabel = document.getElementById("share-or-link-label");
+      const copyFilenamesBtn = document.getElementById("copy-filenames-btn");
+      const copyFilenamesLabel = document.getElementById("copy-filenames-label");
+      const clearSelectionBtn = document.getElementById("clear-selection-btn");
+      const clearSelectionLabel = document.getElementById("clear-selection-label");
+      const languageLabelEl = document.getElementById("language-label");
+      const languageSelect = document.getElementById("language-select");
+      const helpBtn = document.getElementById("help-btn");
+      const bannerEl = document.getElementById("banner");
+      const bannerMessageEl = document.getElementById("banner-message");
+      const bannerCloseBtn = document.getElementById("banner-close-btn");
+      const liveRegionEl = document.getElementById("live-region");
 
-    // State
-    const state = {
-      images: [], // filenames only
-      imagesHash: '',
-      selected: new Set(),
-      only: !!CONFIG.showOnlySelectedDefault,
-      open: null,
-      lang: CONFIG.localeDefault,
-      v: null,
-    };
+      // Overlay elements
+      const overlayEl = document.getElementById("overlay");
+      const overlayCloseBtn = document.getElementById("overlay-close-btn");
+      const overlayStageEl = document.getElementById("overlay-stage");
+      const overlayImgEl = document.getElementById("overlay-img");
+      const overlaySpinnerEl = document.getElementById("overlay-spinner");
+      const overlayPrevBtn = document.getElementById("overlay-prev-btn");
+      const overlayNextBtn = document.getElementById("overlay-next-btn");
+      const overlaySelectBtn = document.getElementById("overlay-select-btn");
+      const overlayFilenameRow = document.getElementById("overlay-filename-row");
+      const overlayFilenameEl = document.getElementById("overlay-filename");
+      const overlayCopyFilenameBtn = document.getElementById("overlay-copy-filename-btn");
+      const overlayCopyFilenameLabel = document.getElementById("overlay-copy-filename-label");
 
-    // i18n helpers
-    function L(key, ...args) {
-      const dict = STR[state.lang] || STR[CONFIG.localeDefault];
-      const val = dict[key];
-      return typeof val === 'function' ? val(...args) : val;
-    }
-    function applyLangToUI(){
-      const supportsShare = !!navigator.share;
-      qs('#shareOrCopy').textContent = supportsShare ? L('share') : L('copyLink');
-      qs('#copyNames').textContent = L('copyNames');
-      qs('#onlyLbl').textContent = L('only');
-      qs('#clearSel').textContent = L('clear');
-      qs('#ovCopyName').textContent = L('filenameCopy');
-      updateSelCount();
-    }
+      // Help modal
+      const helpModalEl = document.getElementById("help-modal");
+      const helpTitleEl = document.getElementById("help-title");
+      const helpBodyEl = document.getElementById("help-body");
+      const helpCloseBtn = document.getElementById("help-close-btn");
 
-    // Storage key
-    const storageKey = () => `pg:${location.pathname}#${CONFIG.baseDir}#${state.imagesHash}`;
+      const prefersReducedMotion = window.matchMedia &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // URL sync
-    const parseURL = () => {
-      const p = new URLSearchParams(location.search);
-      return { sel: p.get('sel'), only: p.get('only') === '1', open: p.get('open'), lang: p.get('lang'), v: p.get('v') };
-    };
-    const pushURL = debounce(()=>{
-      const p = new URLSearchParams(location.search);
-      if (state.selected.size) p.set('sel', Array.from(state.selected).join(',')); else p.delete('sel');
-      if (state.only) p.set('only','1'); else p.delete('only');
-      if (state.open) p.set('open', state.open); else p.delete('open');
-      if (state.lang) p.set('lang', state.lang); else p.delete('lang');
-      if (state.v) p.set('v', state.v); else p.delete('v');
-      history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
-      localStorage.setItem(storageKey(), JSON.stringify({ sel: Array.from(state.selected), only: state.only, open: state.open, lang: state.lang, v: state.v }));
-    }, 200);
+      const state = {
+        selected: new Set(),
+        showOnlySelected: !!CONFIG.showOnlySelectedDefault,
+        lang: CONFIG.localeDefault in CONFIG.i18n ? CONFIG.localeDefault : "en",
+        openFilename: null,
+        columns: CONFIG.minColumns,
+        focusIndex: 0,
+        lastFocusedTile: null
+      };
 
-    // Banners
-    function showBanner(msg){ const b=$banner(); b.textContent = msg; b.hidden = false; }
-    function hideBanner(){ const b=$banner(); b.hidden = true; b.textContent = ''; }
+      const tilestore = {
+        visibleOrder: [], // filenames in current visual order
+        tilesByFilename: new Map()
+      };
 
-    // Manifest loading & duplicate check
-    async function loadImages(){
-      try {
-        const res = await fetch(CONFIG.baseDir + CONFIG.manifest, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP '+res.status);
-        const json = await res.json();
-        const arr = Array.isArray(json?.images) ? json.images : [];
-        state.images = arr.map(String).map(s=>s.split('/').pop());
-        const seen = new Set(); const dupes=[];
-        for (const f of state.images){ if (seen.has(f)) dupes.push(f); seen.add(f); }
-        if (dupes.length){ showBanner(L('dupes', dupes)); throw new Error('dupes'); }
-        state.imagesHash = hash(state.images.join('|'));
-      } catch (e){ showBanner(L('loadManifestFail')); throw e; }
-    }
+      const storageKey =
+        "pg:" + window.location.pathname + "#" + CONFIG.baseDir + "#" + CONFIG.imagesHash;
 
-    // Grid rendering
-    function computeColumns(){
-      const w = $grid().clientWidth || window.innerWidth;
-      const approx = CONFIG.approxCellSizePx + CONFIG.gapPx;
-      const raw = w / approx; let cols = raw;
-      if (CONFIG.rounding === 'floor') cols = Math.floor(raw); else if (CONFIG.rounding==='ceil') cols = Math.ceil(raw); else cols = Math.round(raw);
-      cols = Math.max(CONFIG.minColumns, Math.min(CONFIG.maxColumns, cols));
-      $grid().style.setProperty('--cols', cols);
-    }
+      let bannerTimer = null;
+      let urlSyncScheduled = null;
+      let debounceTimer = null;
+      let isApplyingStateFromStorageOrUrl = true;
 
-    function makeCell(idx, filename){
-      const cell = document.createElement('div');
-      cell.className = 'cell';
-      cell.setAttribute('role','gridcell');
-      cell.dataset.name = filename;
+      function debounce(fn, delay) {
+        return function () {
+          const args = arguments;
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(function () {
+            fn.apply(null, args);
+          }, delay);
+        };
+      }
 
-      const tile = document.createElement('button');
-      tile.className = 'tile';
-      tile.type = 'button';
-      tile.tabIndex = 0;
-      tile.addEventListener('click', ()=> openOverlay(filename));
+      function t(key, vars) {
+        const lang = state.lang in CONFIG.i18n ? state.lang : CONFIG.localeDefault;
+        let str =
+          (CONFIG.i18n[lang] && CONFIG.i18n[lang][key]) ||
+          (CONFIG.i18n[CONFIG.localeDefault] &&
+            CONFIG.i18n[CONFIG.localeDefault][key]) ||
+          key;
+        if (vars) {
+          for (const k in vars) {
+            str = str.replace(new RegExp("\\{" + k + "\\}", "g"), String(vars[k]));
+          }
+        }
+        return str;
+      }
 
-      const img = document.createElement('img');
-      img.className = 'photo'; img.alt = filename; img.loading = 'lazy'; img.decoding = 'async'; img.draggable = false;
-      img.src = CONFIG.baseDir + filename;
+      function announce(msg) {
+        liveRegionEl.textContent = "";
+        // small delay to force announcement in some ATs
+        setTimeout(function () {
+          liveRegionEl.textContent = msg;
+        }, 10);
+      }
 
-      const sp = document.createElement('div'); sp.className = 'spinner';
-      img.addEventListener('load', ()=> sp.remove());
-      img.addEventListener('error', ()=>{ sp.remove(); const ph = document.createElement('div'); ph.className='broken'; ph.textContent='Load failed'; tile.appendChild(ph); });
+      function showBanner(message) {
+        if (!message) return;
+        bannerMessageEl.textContent = message;
+        bannerEl.classList.add("visible");
+        if (bannerTimer) clearTimeout(bannerTimer);
+        bannerTimer = setTimeout(function () {
+          hideBanner();
+        }, 8000);
+      }
 
-      const sel = document.createElement('input');
-      sel.type = 'checkbox';
-      sel.className = 'selbox';
-      sel.tabIndex = 0;
-      sel.setAttribute('aria-label', `Select ${filename}`);
-      sel.checked = state.selected.has(filename);
-      sel.addEventListener('click', (e)=> e.stopPropagation());
-      sel.addEventListener('change', ()=>{ toggleSelect(filename); sel.checked = state.selected.has(filename); });
+      function hideBanner() {
+        bannerEl.classList.remove("visible");
+        bannerMessageEl.textContent = "";
+      }
 
-      tile.appendChild(img); tile.appendChild(sp);
-      cell.appendChild(tile); cell.appendChild(sel);
-      return cell;
-    }
+      bannerCloseBtn.addEventListener("click", function () {
+        hideBanner();
+      });
 
-    function renderGrid(){
-      const g = $grid(); g.innerHTML = '';
-      const list = state.only ? state.images.filter(n=>state.selected.has(n)) : state.images;
-      list.forEach((name, i)=> g.appendChild(makeCell(i, name)));
+      function computeColumns() {
+        const width = gridEl.clientWidth || window.innerWidth || 800;
+        let approxCols = width / CONFIG.approxCellSizePx;
+        if (CONFIG.rounding === "floor") approxCols = Math.floor(approxCols);
+        else if (CONFIG.rounding === "ceil") approxCols = Math.ceil(approxCols);
+        else approxCols = Math.round(approxCols);
+
+        let cols = Math.max(CONFIG.minColumns, Math.min(CONFIG.maxColumns, approxCols || 1));
+
+        // enforce gridMaxScale: prevent cells getting too large
+        const cellWidth = width / cols;
+        const maxCellWidth = CONFIG.approxCellSizePx * CONFIG.gridMaxScale;
+        if (maxCellWidth && cellWidth > maxCellWidth) {
+          const adjustedCols = Math.min(CONFIG.maxColumns, Math.ceil(width / maxCellWidth));
+          cols = Math.max(cols, adjustedCols);
+        }
+
+        state.columns = cols;
+        gridEl.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
+      }
+
+      function getVisibleOrder() {
+        if (!CONFIG.selectionEnabled || !state.showOnlySelected) {
+          return images.slice();
+        }
+        const order = [];
+        for (const name of images) {
+          if (state.selected.has(name)) order.push(name);
+        }
+        return order;
+      }
+
+      function updateEmptyState() {
+        const visible = tilestore.visibleOrder;
+        if (!images.length) {
+          emptyStateEl.textContent = "No photos available in this gallery.";
+          emptyStateEl.hidden = false;
+        } else if (!visible.length && state.showOnlySelected && state.selected.size) {
+          emptyStateEl.textContent = "No photos match the current filter.";
+          emptyStateEl.hidden = false;
+        } else if (!visible.length) {
+          emptyStateEl.textContent = "No photos available in this gallery.";
+          emptyStateEl.hidden = false;
+        } else {
+          emptyStateEl.hidden = true;
+        }
+      }
+
+      let lazyObserver = null;
+
+      function setupLazyObserver() {
+        if ("IntersectionObserver" in window) {
+          lazyObserver = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                const tile = entry.target;
+                const img = tile.querySelector(".photo-img");
+                const spinner = tile.querySelector(".tile-spinner");
+                const src = img && img.getAttribute("data-src");
+                if (src && !img.src) {
+                  spinner && (spinner.style.display = "flex");
+                  img.src = src;
+                }
+                lazyObserver.unobserve(tile);
+              }
+            }
+          }, { rootMargin: "100px" });
+        }
+      }
+
+      function attachImageLoadHandlers(tile, img) {
+        const spinner = tile.querySelector(".tile-spinner");
+        const errorBox = tile.querySelector(".tile-error");
+        if (!img) return;
+        img.addEventListener("load", function () {
+          tile.classList.add("tile-loaded");
+          tile.classList.remove("tile-failed");
+          if (spinner) spinner.style.display = "none";
+          if (errorBox) errorBox.style.display = "none";
+          img.removeAttribute("aria-hidden");
+        });
+        img.addEventListener("error", function () {
+          tile.classList.add("tile-failed");
+          if (spinner) spinner.style.display = "none";
+          if (errorBox) errorBox.style.display = "flex";
+          img.setAttribute("aria-hidden", "true");
+        });
+      }
+
+      function renderGrid() {
+        gridEl.setAttribute("aria-busy", "true");
+        gridEl.innerHTML = "";
+        tilestore.tilesByFilename.clear();
+
+        tilestore.visibleOrder = getVisibleOrder();
+
+        if (!tilestore.visibleOrder.length) {
+          updateEmptyState();
+          gridEl.setAttribute("aria-busy", "false");
+          return;
+        }
+
+        tilestore.visibleOrder.forEach((filename, index) => {
+          const tile = document.createElement("div");
+          tile.className = "photo-tile" + (state.selected.has(filename) ? " selected" : "");
+          tile.setAttribute("role", "gridcell");
+          tile.setAttribute("tabindex", "-1");
+          tile.dataset.filename = filename;
+          tile.dataset.index = index;
+
+          const inner = document.createElement("div");
+          inner.className = "photo-tile-inner";
+          tile.appendChild(inner);
+
+          const img = document.createElement("img");
+          img.className = "photo-img";
+          img.alt = filename;
+          img.draggable = false;
+          img.setAttribute("aria-hidden", "true");
+          img.style.padding = CONFIG.cellPaddingPx + "px";
+          img.setAttribute("data-src", CONFIG.baseDir + filename);
+          inner.appendChild(img);
+
+          const spinner = document.createElement("div");
+          spinner.className = "tile-spinner";
+          spinner.innerHTML = '<div class="tile-spinner-icon"></div>';
+          inner.appendChild(spinner);
+
+          const errorBox = document.createElement("div");
+          errorBox.className = "tile-error";
+          errorBox.textContent = "Failed to load";
+          errorBox.style.display = "none";
+          inner.appendChild(errorBox);
+
+          const selectBtn = document.createElement("button");
+          selectBtn.type = "button";
+          selectBtn.className = "tile-select-btn";
+          selectBtn.setAttribute("aria-label", "Toggle selection for " + filename);
+          selectBtn.innerHTML = '<span class="tile-select-btn-icon" aria-hidden="true">✓</span>';
+          inner.appendChild(selectBtn);
+
+          // Click handlers
+          tile.addEventListener("click", function (ev) {
+            if (!imagesSet.has(filename)) return;
+            if (!CONFIG.selectionEnabled) {
+              openOverlay(filename, { sourceTile: tile });
+              return;
+            }
+            if (ev.metaKey || ev.ctrlKey) {
+              toggleSelection(filename);
+            } else {
+              openOverlay(filename, { sourceTile: tile });
+            }
+          });
+
+          selectBtn.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            if (!CONFIG.selectionEnabled) return;
+            toggleSelection(filename);
+          });
+
+          // Keyboard (tile as focusable cell)
+          tile.addEventListener("keydown", function (ev) {
+            handleGridKeydown(ev, tile);
+          });
+
+          attachImageLoadHandlers(tile, img);
+          gridEl.appendChild(tile);
+
+          tilestore.tilesByFilename.set(filename, tile);
+
+          if (lazyObserver) {
+            lazyObserver.observe(tile);
+          } else {
+            // Fallback: eager load
+            img.src = img.getAttribute("data-src");
+          }
+        });
+
+        // Roving tabindex
+        const totalTiles = tilestore.visibleOrder.length;
+        if (totalTiles > 0) {
+          const safeIndex = Math.max(0, Math.min(state.focusIndex || 0, totalTiles - 1));
+          state.focusIndex = safeIndex;
+          const filename = tilestore.visibleOrder[safeIndex];
+          const tile = tilestore.tilesByFilename.get(filename);
+          if (tile) tile.setAttribute("tabindex", "0");
+        }
+
+        updateEmptyState();
+        gridEl.setAttribute("aria-busy", "false");
+      }
+
+      function moveFocusToIndex(newIndex, scrollIntoView) {
+        const total = tilestore.visibleOrder.length;
+        if (!total) return;
+        newIndex = Math.max(0, Math.min(total - 1, newIndex));
+        state.focusIndex = newIndex;
+        const filename = tilestore.visibleOrder[newIndex];
+        tilestore.tilesByFilename.forEach(tile => tile.setAttribute("tabindex", "-1"));
+        const tile = tilestore.tilesByFilename.get(filename);
+        if (tile) {
+          tile.setAttribute("tabindex", "0");
+          if (scrollIntoView) {
+            tile.scrollIntoView({ block: "nearest", inline: "nearest" });
+          }
+          tile.focus();
+        }
+      }
+
+      function handleGridKeydown(ev, tile) {
+        const key = ev.key;
+        const idx = tilestore.visibleOrder.indexOf(tile.dataset.filename);
+        if (idx === -1) return;
+
+        const columns = Math.max(1, state.columns || CONFIG.minColumns);
+        let handled = false;
+
+        if (key === "ArrowRight") {
+          moveFocusToIndex(idx + 1, true);
+          handled = true;
+        } else if (key === "ArrowLeft") {
+          moveFocusToIndex(idx - 1, true);
+          handled = true;
+        } else if (key === "ArrowDown") {
+          moveFocusToIndex(idx + columns, true);
+          handled = true;
+        } else if (key === "ArrowUp") {
+          moveFocusToIndex(idx - columns, true);
+          handled = true;
+        } else if (key === "Home") {
+          const rowStart = idx - (idx % columns);
+          moveFocusToIndex(rowStart, true);
+          handled = true;
+        } else if (key === "End") {
+          const rowStart = idx - (idx % columns);
+          const rowEnd = Math.min(rowStart + (columns - 1), tilestore.visibleOrder.length - 1);
+          moveFocusToIndex(rowEnd, true);
+          handled = true;
+        } else if (key === "PageDown" || key === "PageUp") {
+          const viewport = window.innerHeight || document.documentElement.clientHeight || 800;
+          const approxRowHeight = CONFIG.approxCellSizePx + CONFIG.gapPx;
+          const rowsPerPage = Math.max(1, Math.floor(viewport / approxRowHeight));
+          const step = rowsPerPage * columns;
+          const delta = key === "PageDown" ? step : -step;
+          moveFocusToIndex(idx + delta, true);
+          handled = true;
+        } else if (key === "Enter" || key === " ") {
+          // Open overlay
+          openOverlay(tile.dataset.filename, { sourceTile: tile });
+          handled = true;
+        } else if ((key === "s" || key === "S") && CONFIG.selectionEnabled) {
+          toggleSelection(tile.dataset.filename);
+          handled = true;
+        }
+
+        if (handled) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+      }
+
+      function updateSelectionSummary() {
+        const n = state.selected.size;
+        const text = t("selectedCount", { n: n });
+        selectionSummaryEl.textContent = text;
+      }
+
+      function updateSelectionButtons() {
+        const hasSel = state.selected.size > 0 && CONFIG.selectionEnabled;
+        copyFilenamesBtn.disabled = !hasSel;
+        clearSelectionBtn.disabled = !hasSel;
+      }
+
+      function toggleSelection(filename) {
+        if (!CONFIG.selectionEnabled) return;
+        if (!imagesSet.has(filename)) return;
+
+        if (state.selected.has(filename)) {
+          state.selected.delete(filename);
+        } else {
+          state.selected.add(filename);
+        }
+
+        const tile = tilestore.tilesByFilename.get(filename);
+        if (tile) {
+          tile.classList.toggle("selected", state.selected.has(filename));
+        }
+
+        // Overlay select button
+        if (state.openFilename === filename) {
+          overlaySelectBtn.setAttribute("aria-pressed", state.selected.has(filename) ? "true" : "false");
+        }
+
+        updateSelectionSummary();
+        updateSelectionButtons();
+        scheduleStateSync();
+      }
+
+      function setShowOnlySelected(value) {
+        state.showOnlySelected = !!value;
+        showOnlyCheckbox.checked = !!value;
+        renderGrid();
+        updateSelectionSummary();
+        updateSelectionButtons();
+        scheduleStateSync();
+      }
+
+      function setLanguage(lang) {
+        if (!(lang in CONFIG.i18n)) {
+          lang = CONFIG.localeDefault;
+        }
+        state.lang = lang;
+        document.documentElement.lang = lang;
+
+        languageSelect.value = lang;
+
+        showOnlyLabelEl.textContent = t("showOnlySelected");
+        shareOrLinkLabel.textContent =
+          typeof navigator !== "undefined" && navigator.share ? t("share") : t("copyLink");
+        copyFilenamesLabel.textContent = t("copyFilenames");
+        clearSelectionLabel.textContent = t("clearSelection");
+        languageLabelEl.textContent = t("language");
+        helpBtn.setAttribute("aria-label", t("help"));
+        helpTitleEl.textContent = t("helpTitle");
+        helpBodyEl.textContent =
+          CONFIG.helpContentText != null ? CONFIG.helpContentText : t("helpBody");
+        overlayCopyFilenameLabel.textContent = t("copyFilename");
+        updateSelectionSummary();
+      }
+
+      function buildStateUrl() {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        params.delete("sel");
+        params.delete("only");
+        params.delete("open");
+        params.delete("lang");
+
+        if (CONFIG.selectionEnabled && state.selected.size > 0) {
+          const selectedInVisualOrder = getVisibleOrder().filter(name =>
+            state.selected.has(name)
+          );
+          if (selectedInVisualOrder.length) {
+            params.set("sel", selectedInVisualOrder.join(","));
+          }
+        }
+
+        if (state.showOnlySelected && CONFIG.selectionEnabled) {
+          params.set("only", "1");
+        }
+
+        if (state.openFilename && imagesSet.has(state.openFilename)) {
+          params.set("open", state.openFilename);
+        }
+
+        if (state.lang) {
+          params.set("lang", state.lang);
+        }
+
+        url.search = params.toString();
+        return url;
+      }
+
+      function scheduleStateSync() {
+        if (isApplyingStateFromStorageOrUrl) return;
+        if (!urlSyncScheduled) {
+          urlSyncScheduled = debounce(syncStateToUrlAndStorage, CONFIG.urlDebounceMs);
+        }
+        urlSyncScheduled();
+      }
+
+      function syncStateToUrlAndStorage() {
+        const url = buildStateUrl();
+        history.replaceState(null, "", url.toString());
+
+        const payload = {
+          sel: CONFIG.selectionEnabled ? Array.from(state.selected) : [],
+          only: !!state.showOnlySelected && CONFIG.selectionEnabled,
+          open: state.openFilename,
+          lang: state.lang
+        };
+
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(payload));
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      window.addEventListener("storage", function (ev) {
+        if (ev.key !== storageKey) return;
+        if (!ev.newValue) return;
+        try {
+          const data = JSON.parse(ev.newValue);
+          applyExternalState(data);
+        } catch (e) {
+          // ignore
+        }
+      });
+
+      function applyExternalState(data) {
+        isApplyingStateFromStorageOrUrl = true;
+        try {
+          const newSelected = new Set();
+          if (Array.isArray(data.sel) && CONFIG.selectionEnabled) {
+            for (const name of data.sel) {
+              if (imagesSet.has(name)) newSelected.add(name);
+            }
+          }
+          state.selected = newSelected;
+          state.showOnlySelected = !!data.only && CONFIG.selectionEnabled;
+          if (typeof data.lang === "string" && data.lang in CONFIG.i18n) {
+            state.lang = data.lang;
+          }
+          state.openFilename = data.open && imagesSet.has(data.open) ? data.open : null;
+
+          setLanguage(state.lang);
+          showOnlyCheckbox.checked = state.showOnlySelected;
+          renderGrid();
+          updateSelectionSummary();
+          updateSelectionButtons();
+
+          if (state.openFilename) {
+            const tile = tilestore.tilesByFilename.get(state.openFilename) || null;
+            openOverlay(state.openFilename, { sourceTile: tile, fromExternal: true });
+          } else {
+            closeOverlay({ skipUrlSync: true });
+          }
+        } finally {
+          isApplyingStateFromStorageOrUrl = false;
+        }
+      }
+
+      function openOverlay(filename, options) {
+        if (!imagesSet.has(filename)) return;
+        const opts = options || {};
+        state.openFilename = filename;
+        state.lastFocusedTile = opts.sourceTile || tilestore.tilesByFilename.get(filename) || null;
+
+        overlayEl.classList.add("visible");
+        overlayEl.setAttribute("aria-hidden", "false");
+
+        if (!CONFIG.filenameInOverlay) {
+          overlayFilenameRow.style.display = "none";
+        } else {
+          overlayFilenameRow.style.display = "flex";
+        }
+
+        overlayFilenameEl.textContent = filename;
+        overlaySelectBtn.setAttribute(
+          "aria-pressed",
+          state.selected.has(filename) ? "true" : "false"
+        );
+
+        loadOverlayImage(filename, { animate: !prefersReducedMotion && !opts.skipAnimation });
+
+        // initial focus into dialog
+        overlayCloseBtn.focus();
+
+        scheduleStateSync();
+        setupOverlaySwipe();
+      }
+
+      function closeOverlay(options) {
+        const opts = options || {};
+        if (!overlayEl.classList.contains("visible")) return;
+        overlayEl.classList.remove("visible");
+        overlayEl.setAttribute("aria-hidden", "true");
+
+        const filename = state.openFilename;
+        state.openFilename = null;
+
+        if (!opts.skipUrlSync) {
+          scheduleStateSync();
+        }
+
+        // Restore focus
+        if (state.lastFocusedTile && document.body.contains(state.lastFocusedTile)) {
+          state.lastFocusedTile.focus();
+        } else if (filename && tilestore.tilesByFilename.get(filename)) {
+          tilestore.tilesByFilename.get(filename).focus();
+        }
+      }
+
+      function getOverlayVisibleOrder() {
+        return getVisibleOrder();
+      }
+
+      function loadOverlayImage(filename, options) {
+        const opts = options || {};
+        overlaySpinnerEl.style.display = "flex";
+        overlayImgEl.classList.remove("slide-left", "slide-right");
+        overlayImgEl.src = "";
+        overlayImgEl.alt = filename;
+
+        const src = CONFIG.baseDir + filename;
+        const img = new Image();
+        img.onload = function () {
+          overlaySpinnerEl.style.display = "none";
+          overlayImgEl.src = src;
+          if (opts.animate) {
+            const order = getOverlayVisibleOrder();
+            const idx = order.indexOf(filename);
+            const prevIdx = order.indexOf(overlayImgEl.dataset.previousFilename || "");
+            if (prevIdx !== -1 && idx !== -1) {
+              const direction = idx > prevIdx ? "slide-left" : "slide-right";
+              overlayImgEl.classList.add(direction);
+              setTimeout(function () {
+                overlayImgEl.classList.remove("slide-left", "slide-right");
+              }, CONFIG.swipeAnimMs + 20);
+            }
+          }
+          overlayImgEl.dataset.previousFilename = filename;
+          preloadAdjacent(filename);
+        };
+        img.onerror = function () {
+          overlaySpinnerEl.style.display = "none";
+          overlayImgEl.alt = "Failed to load " + filename;
+        };
+        img.src = src;
+      }
+
+      function preloadAdjacent(filename) {
+        const order = getOverlayVisibleOrder();
+        const idx = order.indexOf(filename);
+        if (idx === -1) return;
+        const maxPreload = Math.max(0, CONFIG.maxVisiblePreload | 0);
+        for (let offset = 1; offset <= maxPreload; offset++) {
+          const before = order[idx - offset];
+          const after = order[idx + offset];
+          if (before) {
+            const img = new Image();
+            img.src = CONFIG.baseDir + before;
+          }
+          if (after) {
+            const img = new Image();
+            img.src = CONFIG.baseDir + after;
+          }
+        }
+      }
+
+      function navigateOverlay(delta) {
+        const order = getOverlayVisibleOrder();
+        if (!order.length || !state.openFilename) return;
+        const idx = order.indexOf(state.openFilename);
+        if (idx === -1) return;
+        let nextIdx = idx + delta;
+        if (nextIdx < 0) nextIdx = order.length - 1;
+        else if (nextIdx >= order.length) nextIdx = 0;
+        const nextFilename = order[nextIdx];
+        if (!nextFilename) return;
+        state.openFilename = nextFilename;
+        overlayFilenameEl.textContent = nextFilename;
+        overlaySelectBtn.setAttribute(
+          "aria-pressed",
+          state.selected.has(nextFilename) ? "true" : "false"
+        );
+        loadOverlayImage(nextFilename, { animate: !prefersReducedMotion });
+        scheduleStateSync();
+      }
+
+      function setupOverlaySwipe() {
+        let startX = null;
+        let tracking = false;
+
+        function onPointerDown(ev) {
+          if (ev.pointerType && ev.pointerType !== "touch" && ev.pointerType !== "pen") return;
+          tracking = true;
+          startX = ev.clientX;
+        }
+
+        function onPointerUp(ev) {
+          if (!tracking || startX == null) return;
+          const dx = ev.clientX - startX;
+          const threshold = 40;
+          if (Math.abs(dx) > threshold) {
+            if (dx < 0) navigateOverlay(1);
+            else navigateOverlay(-1);
+          }
+          tracking = false;
+          startX = null;
+        }
+
+        // Use pointer events if supported
+        overlayStageEl.onpointerdown = onPointerDown;
+        overlayStageEl.onpointerup = onPointerUp;
+      }
+
+      // Overlay event hooks
+      overlayCloseBtn.addEventListener("click", function () {
+        closeOverlay();
+      });
+
+      overlayEl.addEventListener("click", function (ev) {
+        if (ev.target && ev.target.hasAttribute("data-overlay-close")) {
+          closeOverlay();
+        }
+      });
+
+      overlayPrevBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        navigateOverlay(-1);
+      });
+      overlayNextBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        navigateOverlay(1);
+      });
+
+      overlaySelectBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (!CONFIG.selectionEnabled || !state.openFilename) return;
+        toggleSelection(state.openFilename);
+      });
+
+      overlayCopyFilenameBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (!state.openFilename) return;
+        copyText(state.openFilename).then(function () {
+          announce(t("copyFilename"));
+        });
+      });
+
+      document.addEventListener("keydown", function (ev) {
+        const key = ev.key;
+        const overlayOpen = overlayEl.classList.contains("visible");
+        const helpOpen = helpModalEl.classList.contains("visible");
+
+        if (helpOpen) {
+          if (key === "Escape") {
+            ev.preventDefault();
+            closeHelp();
+          }
+          if (key === "Tab") {
+            trapFocus(ev, helpModalEl);
+          }
+          return;
+        }
+
+        if (overlayOpen) {
+          if (key === "Escape") {
+            ev.preventDefault();
+            closeOverlay();
+          } else if (key === "ArrowLeft") {
+            ev.preventDefault();
+            navigateOverlay(-1);
+          } else if (key === "ArrowRight") {
+            ev.preventDefault();
+            navigateOverlay(1);
+          } else if ((key === " " || key === "Spacebar") && CONFIG.selectionEnabled) {
+            ev.preventDefault();
+            if (state.openFilename) toggleSelection(state.openFilename);
+          } else if (key === "?") {
+            ev.preventDefault();
+            // close overlay then show help
+            closeOverlay({ skipUrlSync: true });
+            openHelp();
+          } else if (key === "Tab") {
+            trapFocus(ev, overlayEl);
+          }
+          return;
+        }
+
+        // Global help shortcut from grid/top
+        if (key === "?") {
+          ev.preventDefault();
+          openHelp();
+        }
+      });
+
+      function trapFocus(ev, container) {
+        const focusableSelectors =
+          'a[href], button:not([disabled]), textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select, [tabindex]:not([tabindex="-1"])';
+        const focusables = Array.prototype.slice.call(
+          container.querySelectorAll(focusableSelectors)
+        ).filter(el => el.offsetParent !== null);
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (ev.shiftKey) {
+          if (document.activeElement === first) {
+            ev.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            ev.preventDefault();
+            first.focus();
+          }
+        }
+      }
+
+      // Help modal logic
+
+      function openHelp() {
+        if (!CONFIG.helpButton) return;
+        helpModalEl.classList.add("visible");
+        helpModalEl.setAttribute("aria-hidden", "false");
+        helpBtn.setAttribute("aria-expanded", "true");
+        helpCloseBtn.focus();
+      }
+
+      function closeHelp() {
+        helpModalEl.classList.remove("visible");
+        helpModalEl.setAttribute("aria-hidden", "true");
+        helpBtn.setAttribute("aria-expanded", "false");
+        helpBtn.focus();
+      }
+
+      helpBtn.addEventListener("click", function () {
+        if (!CONFIG.helpButton) return;
+        if (helpModalEl.classList.contains("visible")) closeHelp();
+        else openHelp();
+      });
+
+      helpCloseBtn.addEventListener("click", function () {
+        closeHelp();
+      });
+
+      helpModalEl.addEventListener("click", function (ev) {
+        if (ev.target && ev.target.hasAttribute("data-help-close")) {
+          closeHelp();
+        }
+      });
+
+      if (!CONFIG.helpButton) {
+        helpBtn.style.display = "none";
+      }
+
+      // Clipboard helpers
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.left = "-9999px";
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            const ok = document.execCommand("copy");
+            document.body.removeChild(ta);
+            if (ok) resolve();
+            else reject(new Error("execCommand failed"));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
+
+      shareOrLinkBtn.addEventListener("click", function () {
+        const url = buildStateUrl().toString();
+        if (navigator.share) {
+          navigator
+            .share({
+              url: url,
+              title: document.title,
+              text: ""
+            })
+            .catch(function () {
+              // ignored (user canceled)
+            });
+        } else {
+          copyText(url)
+            .then(function () {
+              showBanner(t("linkCopied"));
+              announce(t("linkCopied"));
+            })
+            .catch(function () {
+              showBanner(t("linkCopied"));
+              announce(t("linkCopied"));
+            });
+        }
+      });
+
+      copyFilenamesBtn.addEventListener("click", function () {
+        if (!CONFIG.selectionEnabled || !state.selected.size) return;
+        const ordered = getVisibleOrder().filter(name => state.selected.has(name));
+        const text = ordered.join("\n");
+        copyText(text).then(function () {
+          announce(t("copyFilenames"));
+        });
+      });
+
+      clearSelectionBtn.addEventListener("click", function () {
+        if (!CONFIG.selectionEnabled || !state.selected.size) return;
+        if (CONFIG.confirmClear) {
+          const ok = window.confirm(t("clearSelection") + "?");
+          if (!ok) return;
+        }
+        state.selected.clear();
+        renderGrid();
+        updateSelectionSummary();
+        updateSelectionButtons();
+        scheduleStateSync();
+      });
+
+      showOnlyCheckbox.addEventListener("change", function () {
+        setShowOnlySelected(showOnlyCheckbox.checked);
+      });
+
+      languageSelect.addEventListener("change", function () {
+        setLanguage(languageSelect.value);
+        scheduleStateSync();
+      });
+
+      window.addEventListener("resize", function () {
+        computeColumns();
+        renderGrid();
+      });
+
+      // Initial load: URL, then localStorage fallback
+
+      function parseUrlState() {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+
+        const urlLang = params.get("lang");
+        const langValid = urlLang && urlLang in CONFIG.i18n ? urlLang : null;
+
+        let urlSel = null;
+        let urlSelUnknown = [];
+        let urlSelValid = false;
+
+        if (params.has("sel")) {
+          const raw = params.get("sel") || "";
+          if (raw.trim() === "") {
+            urlSel = [];
+            urlSelValid = true;
+          } else {
+            const parts = raw.split(",").map(decodeURIComponent);
+            urlSel = [];
+            const unknowns = [];
+            for (const name of parts) {
+              if (!imagesSet.has(name)) {
+                unknowns.push(name);
+              } else if (!urlSel.includes(name)) {
+                urlSel.push(name);
+              }
+            }
+            if (unknowns.length) {
+              urlSelUnknown = unknowns;
+              urlSelValid = false;
+            } else {
+              urlSelValid = true;
+            }
+          }
+        }
+
+        let urlOpen = null;
+        let urlOpenUnknown = null;
+        if (params.has("open")) {
+          const name = decodeURIComponent(params.get("open") || "");
+          if (!imagesSet.has(name)) {
+            urlOpenUnknown = name;
+          } else {
+            urlOpen = name;
+          }
+        }
+
+        const urlOnly =
+          params.get("only") === "1"
+            ? true
+            : null; // null means "not specified", so we can fallback
+
+        return {
+          lang: langValid,
+          sel: urlSel,
+          selValid: urlSelValid,
+          selUnknown: urlSelUnknown,
+          open: urlOpen,
+          openUnknown: urlOpenUnknown,
+          only: urlOnly
+        };
+      }
+
+      function parseLocalState() {
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return null;
+          const data = JSON.parse(raw);
+          if (!data || typeof data !== "object") return null;
+
+          const out = {
+            lang: typeof data.lang === "string" && data.lang in CONFIG.i18n ? data.lang : null,
+            sel: [],
+            open: null,
+            only: !!data.only
+          };
+
+          if (Array.isArray(data.sel) && CONFIG.selectionEnabled) {
+            for (const name of data.sel) {
+              if (imagesSet.has(name) && !out.sel.includes(name)) out.sel.push(name);
+            }
+          }
+
+          if (data.open && imagesSet.has(data.open)) {
+            out.open = data.open;
+          }
+
+          return out;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function applyInitialState() {
+        isApplyingStateFromStorageOrUrl = true;
+        try {
+          const urlState = parseUrlState();
+          const lsState = parseLocalState();
+
+          // Language
+          if (urlState.lang) state.lang = urlState.lang;
+          else if (lsState && lsState.lang) state.lang = lsState.lang;
+          else state.lang = CONFIG.localeDefault;
+
+          // Selection
+          if (urlState.sel !== null) {
+            if (urlState.selValid) {
+              state.selected = new Set(urlState.sel);
+            } else {
+              // Invalid sel: ignore URL sel and do not fallback to localStorage
+              state.selected = new Set();
+            }
+          } else if (lsState && Array.isArray(lsState.sel)) {
+            state.selected = new Set(lsState.sel);
+          } else {
+            state.selected = new Set();
+          }
+
+          // Show-only
+          if (urlState.only !== null) {
+            state.showOnlySelected = urlState.only && CONFIG.selectionEnabled;
+          } else if (lsState) {
+            state.showOnlySelected = !!lsState.only && CONFIG.selectionEnabled;
+          } else {
+            state.showOnlySelected = !!CONFIG.showOnlySelectedDefault && CONFIG.selectionEnabled;
+          }
+
+          // Open overlay
+          if (urlState.openUnknown) {
+            state.openFilename = null;
+          } else if (urlState.open) {
+            state.openFilename = urlState.open;
+          } else if (lsState && lsState.open && imagesSet.has(lsState.open)) {
+            state.openFilename = lsState.open;
+          } else {
+            state.openFilename = null;
+          }
+
+          // Error banner: combine if both
+          const messages = [];
+          if (urlState.selUnknown && urlState.selUnknown.length) {
+            messages.push(
+              t("unknownSel", { list: urlState.selUnknown.join(", ") })
+            );
+          }
+          if (urlState.openUnknown) {
+            messages.push(
+              t("unknownOpen", { name: urlState.openUnknown })
+            );
+          }
+          if (messages.length) {
+            showBanner(messages.join("  "));
+          }
+
+          // Apply UI
+          setLanguage(state.lang);
+          showOnlyCheckbox.checked = state.showOnlySelected;
+          computeColumns();
+          setupLazyObserver();
+          renderGrid();
+          updateSelectionSummary();
+          updateSelectionButtons();
+
+          if (state.openFilename && imagesSet.has(state.openFilename)) {
+            const tile = tilestore.tilesByFilename.get(state.openFilename);
+            openOverlay(state.openFilename, { sourceTile: tile, skipAnimation: true });
+          }
+        } finally {
+          isApplyingStateFromStorageOrUrl = false;
+        }
+
+        // Normalize URL & persist
+        syncStateToUrlAndStorage();
+      }
+
+      // Kick off
       computeColumns();
-    }
-
-    function updateSelCount(){
-      qs('#selCount').textContent = L('selected', state.selected.size);
-      const hasSel = state.selected.size > 0;
-      qs('#copyNames').disabled = !hasSel;
-      qs('#clearSel').disabled = !hasSel;
-    }
-
-    // Selection
-    function toggleSelect(filename){
-      if (!CONFIG.selectionEnabled) return;
-      if (state.selected.has(filename)) state.selected.delete(filename); else state.selected.add(filename);
-      updateSelCount();
-      $live().textContent = L('selected', state.selected.size);
-      pushURL();
-    }
-    function clearSelection(){ state.selected.clear(); qsa('.selbox').forEach(b=>b.setAttribute('aria-pressed','false')); updateSelCount(); pushURL(); }
-
-    // Overlay
-    let touchStartX = null;
-    function openOverlay(filename){
-      if (!state.images.includes(filename)) { showBanner(L('openUnknown', filename)); return; }
-      state.open = filename; pushURL();
-      const ov = $overlay(); ov.hidden = false; ov.setAttribute('open','');
-      document.body.style.overflow = 'hidden';
-      qs('#filenameRow').textContent = CONFIG.filenameInOverlay ? filename : '';
-      renderOverlayImage(filename, 0); // initial, no slide
-      qs('#ovCopyName').onclick = ()=> copyText(filename).then(()=> $live().textContent = L('copiedNames'));
-      setTimeout(()=> qs('#ovClose').focus(), 0);
-    }
-    function closeOverlay(){
-      const ov = $overlay(); if (ov.hidden) return; ov.hidden = true; ov.removeAttribute('open');
-      document.body.style.overflow = '';
-      const prev = state.open; state.open = null; pushURL();
-      const tile = qsa('.cell').find(c=>c.dataset.name===prev)?.querySelector('.tile');
-      tile?.focus();
-    }
-    function idxOf(name){ return state.images.indexOf(name); }
-    function step(delta){
-      const i = idxOf(state.open); const j = Math.max(0, Math.min(state.images.length-1, i+delta));
-      if (j !== i){ const dir = delta>0? 1 : -1; renderOverlayImage(state.images[j], dir); state.open = state.images[j]; pushURL(); }
-    }
-    function preloadAround(i){
-      for (let d=-CONFIG.maxVisiblePreload; d<=CONFIG.maxVisiblePreload; d++){
-        const j = i + d; if (j<0||j>=state.images.length) continue; const img = new Image(); img.src = CONFIG.baseDir + state.images[j];
-      }
-    }
-    function renderOverlayImage(filename, dir){
-      const frame = qs('#ovFrame');
-      const old = frame.querySelector('img, .broken');
-
-      const idx = idxOf(filename); preloadAround(idx);
-      const holder = document.createElement('div'); holder.className = 'imgwrap';
-      const img = new Image(); img.alt = filename; img.decoding='async'; img.src = CONFIG.baseDir + filename; img.draggable=false;
-
-      const sp = document.createElement('div'); sp.className = 'spinner'; holder.appendChild(sp);
-      img.addEventListener('load', ()=>{ holder.replaceChildren(img); });
-      img.addEventListener('error', ()=>{ const ph = document.createElement('div'); ph.className='broken'; ph.textContent='Load failed'; holder.replaceChildren(ph); });
-
-      // Animate: slide current out and new in
-      if (old && dir){ old.classList.add(dir>0? 'slide-exit-left':'slide-exit-right'); }
-      holder.classList.add('slide-enter');
-      holder.style.setProperty('--fromX', dir>0? '100%':'-100%');
-      frame.innerHTML = '';
-      frame.appendChild(holder);
-    }
-
-    // Keyboard & focus navigation in grid
-    function gridCells(){ return qsa('.grid .cell'); }
-
-    // Arrow keys move between tiles (not affecting Tab order)
-    $grid().addEventListener('keydown', (e)=>{
-      const tiles = qsa('.grid .tile');
-      const currentIndex = tiles.indexOf(document.activeElement);
-      if (currentIndex === -1) return;
-      const cols = parseInt(getComputedStyle($grid()).getPropertyValue('--cols')) || CONFIG.minColumns;
-      let target = null;
-      switch(e.key){
-        case 'ArrowLeft': e.preventDefault(); target = Math.max(0, currentIndex-1); break;
-        case 'ArrowRight': e.preventDefault(); target = Math.min(tiles.length-1, currentIndex+1); break;
-        case 'ArrowUp': e.preventDefault(); target = Math.max(0, currentIndex - cols); break;
-        case 'ArrowDown': e.preventDefault(); target = Math.min(tiles.length-1, currentIndex + cols); break;
-        case 'Home': e.preventDefault(); target = Math.floor(currentIndex/cols)*cols; break;
-        case 'End': e.preventDefault(); target = Math.min(tiles.length-1, Math.floor(currentIndex/cols)*cols + (cols-1)); break;
-        case 'PageUp': e.preventDefault(); window.scrollBy({ top: -window.innerHeight*0.9, behavior: 'smooth' }); target = Math.max(0, currentIndex - cols); break;
-        case 'PageDown': e.preventDefault(); window.scrollBy({ top: window.innerHeight*0.9, behavior: 'smooth' }); target = Math.min(tiles.length-1, currentIndex + cols); break;
-        case 'Enter': case ' ': e.preventDefault(); document.activeElement.click(); return;
-      }
-      if (target!=null) tiles[target]?.focus();
-    });
-
-    // Overlay keys & interactions
-    document.addEventListener('keydown', (e)=>{
-      if ($overlay().hidden) return;
-      if (e.key === 'Escape') { e.preventDefault(); closeOverlay(); }
-      else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
-      else if (e.key === ' ') { e.preventDefault(); toggleSelect(state.open); }
-    });
-
-    // Swipe (touch)
-    let touchStart = null;
-    qs('#ovStage').addEventListener('touchstart', (e)=>{ if (e.touches.length===1) touchStart = e.touches[0].clientX; }, {passive:true});
-    qs('#ovStage').addEventListener('touchend', (e)=>{
-      if (touchStart==null) return; const dx = (e.changedTouches[0].clientX - touchStart); touchStart=null; const thr = 30; if (dx > thr) step(-1); else if (dx < -thr) step(1);
-    });
-
-    // Backdrop click closes (ignore clicks on content or nav buttons)
-    qs('#ovStage').addEventListener('click', (e)=>{
-      const frame = qs('#ovFrame');
-      if (!frame.contains(e.target)) closeOverlay();
-    });
-
-    // Persistence & tab sync
-    function loadPersisted(){ try { const raw = localStorage.getItem(storageKey()); if (!raw) return null; return JSON.parse(raw); } catch { return null; } }
-    window.addEventListener('storage', (e)=>{
-      if (e.key !== storageKey()) return;
-      try {
-        const v = JSON.parse(e.newValue || '{}');
-        state.selected = new Set(Array.isArray(v.sel)?v.sel:[]);
-        state.only = !!v.only; state.open = v.open || null; state.lang = v.lang || state.lang; state.v = v.v || state.v;
-        applyLangToUI(); renderGrid(); pushURL();
-        if (state.open) openOverlay(state.open); else if (!$overlay().hidden) closeOverlay();
-      } catch {}
-    });
-
-    // Controls
-    function setupControls(){
-      qs('#shareOrCopy').onclick = async ()=>{
-        if (navigator.share) { try { await navigator.share({ url: location.href }); } catch {} }
-        else { await copyText(location.href); $live().textContent = L('copied'); }
-      }; $live().textContent = L('copied'); };
-      qs('#copyNames').onclick = async ()=>{ const list = Array.from(state.selected); if (!list.length) return; const ok = await copyText(list.join('
-')); $live().textContent = L('copiedNames'); };
-      qs('#onlyChk').onchange = ()=>{ state.only = qs('#onlyChk').checked; renderGrid(); pushURL(); updateSelCount(); }; applyLangToUI(); renderGrid(); pushURL(); };
-      qs('#clearSel').onclick = ()=>{ clearSelection(); };
-      qs('#toggleLang').onclick = ()=>{ state.lang = (state.lang==='en'?'sv':'en'); applyLangToUI(); pushURL(); };
-
-      qs('#ovPrev').onclick = ()=> step(-1);
-      qs('#ovNext').onclick = ()=> step(1);
-      qs('#ovClose').onclick = ()=> closeOverlay();
-
-      window.addEventListener('resize', debounce(computeColumns, 50));
-    }
-
-    // URL & state initialization
-    function initializeFromURL(){
-      const p = parseURL();
-      state.lang = p.lang || state.lang;
-      state.only = p.only || state.only;
-      state.v = p.v || state.v;
-      const selParam = p.sel ? p.sel.split(',').filter(Boolean) : [];
-      const unknownSel = selParam.filter(name=> !state.images.includes(name));
-      if (selParam.length && unknownSel.length){ showBanner(L('selUnknown', unknownSel)); state.selected = new Set(); }
-      else state.selected = new Set(selParam);
-      if (p.open){ if (state.images.includes(p.open)) state.open = p.open; else showBanner(L('openUnknown', p.open)); }
-    }
-
-    function initializeFromStorage(){
-      const v = loadPersisted(); if (!v) return;
-      if (!location.search) { state.selected = new Set(Array.isArray(v.sel)?v.sel:[]); state.only = !!v.only; state.open = v.open || null; state.lang = v.lang || state.lang; state.v = v.v || state.v; }
-    }
-
-    // Boot
-    (async function boot(){
-      applyTheme();
-      setupControls();
-      await loadImages();
-      initializeFromURL();
-      if (!state.selected.size && !state.open) initializeFromStorage();
-      applyLangToUI(); hideBanner(); renderGrid(); updateSelCount(); pushURL(); if (state.open) openOverlay(state.open);
+      setupLazyObserver();
+      applyInitialState();
     })();
   </script>
 </body>

@@ -1,0 +1,210 @@
+Photo Selector Web App — Spec v2.5.0 (proposed, plain text)
+Generated: 2025-11-16
+
+This is a minimal, plain‑text specification for generating a single‑file static web app (index.html) for selecting photos.
+
+DO NOT edit the generated HTML manually. Update this spec and regenerate instead.
+
+============================================================
+
+1. PURPOSE
+
+* Show a responsive grid of photos with selection checkboxes and a single‑image overlay.
+* Sync state to URL and localStorage. Deep links must reproduce selection and/or open image.
+* Be predictable and strict: any invalid URL state shows a clear error and is ignored.
+
+============================================================
+2. DIRECTORY AND IMAGES
+
+* Directory structure per session:
+  /photo-session-YYYY-MM-DD/
+  photos/        (all images live here)
+  index.html     (generated)
+  spec.txt        (this file, plain text allowed)
+* Filenames are case‑sensitive and MUST be unique. Duplicates are a blocking startup error.
+* Images Manifest is embedded at build time as CONFIG.images = [ "filename1.jpg", ... ] (filenames only, no paths).
+* imagesHash = SHA-256(JSON.stringify(sorted(CONFIG.images))) computed at build time and embedded as CONFIG.imagesHash.
+
+============================================================
+3. CONFIG (single source of truth)
+All tunables are provided as a JS object named CONFIG in the generated file.
+
+Required keys:
+baseDir: "photos/"
+images: [ ... ]                 (embedded manifest, filenames only)
+imagesHash: "<sha256>"
+
+Layout and behaviour:
+approxCellSizePx: 180
+cellPaddingPx: 8
+gapPx: 8
+bgColor: "#777"
+cellBorderPx: 1
+cellBorderColor: "rgba(255,255,255,0.25)"
+uiGrayHigh: "rgba(255,255,255,0.85)"
+uiGrayMid:  "rgba(255,255,255,0.55)"
+uiGrayLow:  "rgba(255,255,255,0.25)"
+minColumns: 2
+maxColumns: 12
+rounding: "nearest"   (nearest | floor | ceil)
+gridMaxScale: 1.0
+overlayMaxScale: 1.0
+overlayPaddingPx: 16
+controlSizePx: 44
+controlInsetPx: 12
+swipeAnimMs: 220      (ignored if prefers-reduced-motion)
+maxVisiblePreload: 2
+selectionEnabled: true
+showOnlySelectedDefault: false
+filenameInOverlay: true
+localeDefault: "en"
+focusTileBg: "rgba(0,0,0,0.28)"
+urlDebounceMs: 300
+confirmClear: false
+helpButton: true
+helpContentText: null  (optional plain-text instructions; if null, use i18n defaults)
+
+Internationalization strings (minimal):
+i18n = {
+en: {
+selectedCount: "{n} photos selected",
+showOnlySelected: "Show only selected",
+copyLink: "Copy link",
+share: "Share",
+copyFilenames: "Copy filenames",
+clearSelection: "Clear selection",
+language: "Language",
+help: "Help",
+helpTitle: "How to use this gallery",
+helpBody: "Select with checkbox or S. Open with Enter/Space. Arrows to move. Esc to close.",
+linkCopied: "Link copied",
+unknownSel: "These images aren’t part of this gallery: {list}",
+unknownOpen: "Can’t open ‘{name}’ — not in this gallery.",
+copyFilename: "Copy filename"
+},
+sv: { /* Swedish equivalents */ }
+}
+
+============================================================
+4. URL FORMAT (strict, deep‑linkable)
+State is reflected via debounced history.replaceState (debounce = CONFIG.urlDebounceMs).
+
+Parameters:
+sel  = comma-separated filenames (case-sensitive). Example: ?sel=001.jpg,013.jpg
+only = 1 to show only selected. Example: &only=1
+open = filename to open in overlay. Example: &open=013.jpg
+lang = UI language code (en, sv). Example: &lang=sv
+
+Strict validation:
+
+* If sel contains ANY unknown filename, show an error and ignore the ENTIRE sel (no items selected from URL).
+* If open is unknown, show an error and do not open overlay.
+* If both errors exist, show both; load with no URL-driven selection and no overlay.
+
+Encoding:
+
+* Filenames are URL-decoded, then matched case‑sensitively.
+* When sel is valid, its order is preserved for initial selection; later operations use visual grid order.
+
+============================================================
+5. PERSISTENCE AND SYNC
+
+* localStorage key: pg:<location.pathname>#<CONFIG.baseDir>#<CONFIG.imagesHash>
+* Load order: (1) URL if valid, else (2) localStorage (same key), else (3) empty state.
+* All state changes update URL (debounced) and localStorage.
+* Tabs/windows for the same session sync via the storage event.
+
+============================================================
+6. GRID, SELECTION, TOP BAR
+Selection is a set of filenames. Checkmarks appear on selected tiles in grid and overlay.
+
+Tile interactions:
+
+* Click/tap on photo opens overlay.
+* Toggle selection only via the corner checkbox OR keyboard key S on the tile. Toggling selection does NOT open overlay.
+* Optional: Cmd/Ctrl + Click toggles selection without opening overlay.
+
+Keyboard in grid (roving tabindex):
+
+* Arrow keys move focus among tiles.
+* Enter/Space on tile opens overlay.
+* Space on checkbox OR S on tile toggles selection.
+* Home/End: move to row edges.
+* PageUp/PageDown: move by one viewport page of tiles (computed from viewport size and column count).
+
+Top bar (sticky):
+
+* "N photos selected" (aria-live="polite").
+* Show only selected: checkbox; when checked, grid is filtered and URL gets only=1.
+* Copy link / Share: if Web Share API is available, show Share; otherwise Copy link. The link includes sel, only, and open (if overlay open).
+* Copy filenames: newline-separated selected filenames in current visual order; disabled when selection is empty.
+* Clear selection: disabled when selection is empty; optional confirm via CONFIG.confirmClear.
+* Language toggle (EN/SV).
+* Help (if CONFIG.helpButton): opens instructions dialog (see section 8b). Keyboard shortcut: ?
+
+============================================================
+7. OVERLAY (single image view)
+
+* Can open from grid or via ?open=filename.
+* Background click OR Esc closes overlay. Clicks inside the image stage do NOT close it.
+* On close: remove open from URL and restore focus to the originating grid tile.
+* Navigation: Prev/Next buttons, Left/Right keys, swipe (touch). Optional left/right third click areas navigate.
+* Animation: paged slide on navigation using CONFIG.swipeAnimMs; disabled if prefers-reduced-motion: reduce.
+* Space toggles selection for the current image.
+* Filename row under top bar shows the filename and a "Copy filename" button.
+* Preload adjacent images by up to CONFIG.maxVisiblePreload (default ±1).
+
+============================================================
+8. ACCESSIBILITY AND HELP
+8a. Accessibility:
+
+* Grid uses role=grid; tiles use role=gridcell with roving tabindex.
+* Overlay uses role=dialog, aria-modal=true; focus is trapped while open and returned on close.
+* Focus outline is always visible and high-contrast.
+* Live regions announce selection changes and link-copied.
+* All buttons have meaningful aria-labels and reflect state via aria-checked/aria-pressed where applicable.
+* Honor prefers-reduced-motion by disabling slide animations.
+
+8b. Help / Instructions:
+
+* Help opens an accessible modal dialog with concise instructions.
+* Content comes from CONFIG.helpContentText (plain text). If null, use i18n.helpBody.
+* Close via Esc, Close button, Help button, or the ? shortcut. Opening Help does not change URL.
+
+============================================================
+9. FORMATS AND INTERACTION HYGIENE
+
+* Supported image formats: JPEG, WebP (sRGB with embedded ICC). No color conversion is performed.
+* Grid images are lazy-loaded. Show a spinner while loading; show a failure placeholder on error.
+* Prevent unintended selection/drag on interactive surfaces: user-select: none; draggable=false; -webkit-user-drag: none; overlay stage uses touch-action: none. Allow text selection in filename row.
+
+============================================================
+10. ERRORS AND BANNERS
+
+* Unknown in sel (strict): show banner “These images aren’t part of this gallery: …”. Ignore the entire sel.
+* Unknown open (strict): show banner “Can’t open ‘…’ — not in this gallery.” Do not open overlay.
+* Duplicate filenames in manifest: blocking startup error with details.
+* Banner behavior: non-stacking (latest replaces previous), closable, auto-hide after ~8 seconds, role=status for polite announcement.
+
+============================================================
+11. COPY / LINK BEHAVIOR
+
+* Copy link / Share includes current sel, only, and open (if overlay is open).
+* Copy filenames returns newline-separated selected filenames in visual order after current filters.
+* Overlay filename row provides a single Copy filename button for the current image.
+
+============================================================
+12. GENERATION AND PROVENANCE
+
+* Keep spec.txt beside index.html. Regenerate index.html by pasting this spec into ChatGPT with the request: Generate index.html from this spec.
+* Bump version whenever behavior or tunables change.
+* Generated HTML begins with:
+
+  <!--
+  Photo Selector Web App
+  Generated from spec v2.5.0 on YYYY-MM-DD
+  Spec source: spec.txt
+  -->
+
+============================================================
+END OF SPEC v2.5.0 (proposed)
